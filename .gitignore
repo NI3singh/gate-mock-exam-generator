@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+backend/.env
+frontend/.env
+
+# Firebase
+firebase-service-account.json
+backend/firebase-service-account.json
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Generated
+backend/generated_pdfs/*.pdf
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Alembic
+*.pyc

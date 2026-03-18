@@ -1,0 +1,20 @@
+# Web framework
+fastapi
+uvicorn[standard]
+
+# Database
+sqlalchemy[asyncio]
+asyncpg
+alembic
+
+# Firebase Admin
+firebase-admin
+
+# Validation
+pydantic
+
+# Utilities
+python-dotenv
+httpx
+
+pgvector
