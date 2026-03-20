@@ -1,3 +1,19 @@
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\.env
+*Saved at: 3/20/2026, 5:39:53 PM*
+
+**[REMOVED]**
+```
+(from line ~8)
+NEBIUS_API_KEY=your_nebius_api_key_here
+
+```
+**[ADDED]**
+```
+8     NEBIUS_API_KEY=v1.CmMKHHN0YXRpY2tleS1lMDBxeXFoOXc2M2tqZmRodnISIXNlcnZpY2VhY2NvdW50LWUwMHF0YTRqbWp0dmVyZjhqeDILCIjy9M0GEIH8qXs6DAiH9YyZBxCAxerMAkACWgNlMDA.AAAAAAAAAAEjoQo26G_SS1UiDx8b2f05M8O9CRW7TYvTc6s4KS574fzGdKRs64CN2a-cVjXkDw6EnwxUccdpOS5JZFRGQF0F
+```
+
+---
+
 ### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\syllabus.py
 *Saved at: 3/20/2026, 3:25:08 PM*
 

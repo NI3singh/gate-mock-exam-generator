@@ -1,0 +1,28 @@
+{
+  "description": "Verify a NAT question answer using symbolic computation",
+  "system_prompt": "You are an expert math verifier. Given a question, its numerical answer, and a candidate answer, determine if the candidate is correct within the given tolerance. Return ONLY valid JSON with no markdown or explanation.",
+  "response_schema": {
+    "type": "object",
+    "required": ["verified", "computed_value", "submitted_value", "absolute_error", "within_tolerance", "notes"],
+    "properties": {
+      "verified": {
+        "type": "boolean"
+      },
+      "computed_value": {
+        "type": "number"
+      },
+      "submitted_value": {
+        "type": "number"
+      },
+      "absolute_error": {
+        "type": "number"
+      },
+      "within_tolerance": {
+        "type": "boolean"
+      },
+      "notes": {
+        "type": "string"
+      }
+    }
+  }
+}

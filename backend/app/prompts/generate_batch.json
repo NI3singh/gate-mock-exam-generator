@@ -1,0 +1,87 @@
+{
+  "description": "Generate 5 GATE subject questions (CS or DA paper)",
+  "system_prompt": "You are an expert GATE exam question writer for Computer Science and Data Science papers. Generate exactly 5 multiple-choice or numerical-answer questions strictly following the schema below. Output ONLY valid JSON array with no markdown, no explanation, no text before or after.",
+  "response_schema": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "required": [
+        "question_type",
+        "marks",
+        "difficulty",
+        "section_name",
+        "topic",
+        "stem_tex",
+        "choices",
+        "answer",
+        "solution_tex",
+        "estimated_time_seconds"
+      ],
+      "properties": {
+        "question_type": {
+          "type": "string",
+          "enum": ["MCQ", "MSQ", "NAT"]
+        },
+        "marks": {
+          "type": "integer",
+          "enum": [1, 2]
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["easy", "medium", "hard"]
+        },
+        "section_name": {
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "stem_tex": {
+          "type": "string"
+        },
+        "code_snippet": {
+          "type": ["string", "null"]
+        },
+        "code_language": {
+          "type": ["string", "null"]
+        },
+        "choices": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "required": ["label", "tex"],
+            "properties": {
+              "label": {
+                "type": "string",
+                "enum": ["A", "B", "C", "D"]
+              },
+              "tex": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "answer": {
+          "type": "object",
+          "required": ["type", "correct"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["MCQ", "MSQ", "NAT"]
+            },
+            "correct": {},
+            "tolerance": {
+              "type": "number"
+            }
+          }
+        },
+        "solution_tex": {
+          "type": "string"
+        },
+        "estimated_time_seconds": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

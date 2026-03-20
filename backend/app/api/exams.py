@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.exam import Exam
 from app.models.syllabus import Syllabus
 from app.schemas.exam import ExamGenerateRequest, ExamGenerateResponse, ExamSummary
+from app.services.llm_queue import enqueue, GenerationJob
 
 router = APIRouter()
 
@@ -22,15 +23,14 @@ router = APIRouter()
 )
 async def generate_exam(
     body: ExamGenerateRequest,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Validates the exam configuration, creates an exam row with
-    status 'generating', and returns the exam_id.
-
-    Does NOT call the LLM or generate questions yet — that happens
-    in a later part when the generation worker is built.
+    status 'generating', and enqueues the generation job for
+    background processing by the LLM queue worker.
     """
 
     # ── 1. Validate paper has syllabus data loaded ──
@@ -112,6 +112,21 @@ async def generate_exam(
     db.add(exam)
     await db.commit()
     await db.refresh(exam)
+
+    # ── Enqueue generation job ──
+    job = GenerationJob(
+        exam_id=exam.id,
+        paper=body.paper,
+        scope=body.scope,
+        selected_topics=body.selected_topics if body.scope == "topic" else None,
+        difficulty=body.difficulty,
+        types_ratio={
+            "MCQ": body.types_ratio.MCQ,
+            "MSQ": body.types_ratio.MSQ,
+            "NAT": body.types_ratio.NAT,
+        },
+    )
+    background_tasks.add_task(enqueue, job)
 
     return ExamGenerateResponse(
         exam_id=exam.id,

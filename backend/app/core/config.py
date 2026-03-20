@@ -20,6 +20,9 @@ class Settings:
         "FIREBASE_SERVICE_ACCOUNT_PATH", "./firebase-service-account.json"
     )
 
+    # Nebius LLM
+    NEBIUS_API_KEY: str = os.getenv("NEBIUS_API_KEY", "")
+
     # App
     APP_ENV: str = os.getenv("APP_ENV", "development")
 
