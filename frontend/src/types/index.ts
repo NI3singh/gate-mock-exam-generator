@@ -32,6 +32,40 @@ export interface DashboardStats {
   recent_exams: RecentExam[];
 }
 
+/* ── Syllabus ── */
+export interface TopicFlat {
+  id: number;
+  section_name: string;
+  topic: string;
+}
+
+export interface TopicListResponse {
+  paper: string;
+  total_topics: number;
+  topics: TopicFlat[];
+}
+
+/* ── Exam Config ── */
+export interface TypesRatio {
+  MCQ: number;
+  MSQ: number;
+  NAT: number;
+}
+
+export interface ExamConfig {
+  paper: "CS" | "DA";
+  scope: "full" | "topic";
+  selected_topics: string[];
+  difficulty: "easy" | "medium" | "hard" | "auto";
+  types_ratio: TypesRatio;
+}
+
+export interface ExamGenerateResponse {
+  exam_id: string;
+  status: string;
+  message: string;
+}
+
 /* ── Auth context value ── */
 export interface AuthContextValue {
   firebaseUser: import("firebase/auth").User | null;

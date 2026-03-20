@@ -10,6 +10,7 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import GenerateExam from "./pages/GenerateExam";
+import ExamProgress from "./pages/ExamProgress";
 import Analytics from "./pages/Analytics";
 
 function App() {
@@ -45,6 +46,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <GenerateExam />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/exam/:examId/progress"
+            element={
+              <ProtectedRoute>
+                <ExamProgress />
               </ProtectedRoute>
             }
           />
