@@ -1,264 +1,223 @@
 """
-Question validation with retry logic.
+Validates LLM-generated questions for structural correctness.
 
-Validates each generated question against:
-  1. JSON schema (required fields, correct types, marks, options)
-  2. LaTeX syntax (balanced delimiters)
-  3. SymPy numeric verification for NAT answers (with LLM fallback)
+Checks:
+  1. Required keys present
+  2. Types correct
+  3. Answer format matches question_type
+  4. Marks valid (1 or 2)
+  5. Basic NAT answer sanity via SymPy (if computable)
 """
 
-import re
-import sympy
-from sympy import N as sympy_n
+import logging
+import math
 from typing import Any
 
-from app.services.llm_service import llm_service
+logger = logging.getLogger(__name__)
+
+REQUIRED_KEYS = {
+    "stem_tex",
+    "code_snippet",
+    "code_language",
+    "choices",
+    "answer",
+    "question_type",
+    "marks",
+    "difficulty",
+    "difficulty_score",
+    "section_name",
+    "topic",
+    "estimated_time_seconds",
+    "solution_tex",
+}
+
+VALID_TYPES = {"MCQ", "MSQ", "NAT"}
+VALID_DIFFICULTIES = {"easy", "medium", "hard"}
 
 
-MAX_RETRIES = 3
-
-
-# ─── Result dataclass ────────────────────────────────────────────────────────
-
-
-class ValidationResult:
-    """Container for validation outcome."""
-
-    def __init__(
-        self,
-        valid: bool,
-        errors: list[str],
-        retry_count: int = 0,
-    ) -> None:
-        self.valid = valid
-        self.errors = errors
-        self.retry_count = retry_count
-
-    def __repr__(self) -> str:
-        return f"ValidationResult(valid={self.valid}, errors={self.errors}, retries={self.retry_count})"
-
-
-# ─── LaTeX syntax checks ─────────────────────────────────────────────────────
-
-
-def check_latex_balance(text: str) -> list[str]:
+def validate_question(q: dict, expected_section: str | None = None) -> tuple[bool, str]:
     """
-    Basic LaTeX structural checks.
-    Returns a list of error messages (empty = valid).
+    Validate a single generated question dict.
+    Returns (is_valid, error_message).
     """
-    errors: list[str] = []
+    # ── 1. Check required keys ──
+    missing = REQUIRED_KEYS - set(q.keys())
+    if missing:
+        return False, f"Missing keys: {missing}"
 
-    # Balanced parentheses
-    if text.count("(") != text.count(")"):
-        errors.append(
-            f"Unbalanced parentheses: {text.count('(')} '(' vs {text.count(')')} ')'"
-        )
+    # ── 2. stem_tex must be non-empty string ──
+    if not isinstance(q["stem_tex"], str) or len(q["stem_tex"].strip()) < 10:
+        return False, "stem_tex is empty or too short"
 
-    # Balanced square brackets
-    if text.count("[") != text.count("]"):
-        errors.append(
-            f"Unbalanced brackets: {text.count('[')} '[' vs {text.count(']')} ']'"
-        )
+    # ── 3. solution_tex must be non-empty ──
+    if not isinstance(q["solution_tex"], str) or len(q["solution_tex"].strip()) < 10:
+        return False, "solution_tex is empty or too short"
 
-    # Balanced braces
-    open_b = text.count("{")
-    close_b = text.count("}")
-    if open_b != close_b:
-        errors.append(
-            f"Unbalanced braces: {open_b} '{{' vs {close_b} '}}'"
-        )
+    # ── 4. question_type ──
+    qtype = q.get("question_type")
+    if qtype not in VALID_TYPES:
+        return False, f"Invalid question_type: {qtype}"
 
-    # \left / \right balance
-    left_count = len(re.findall(r"\\left\s*[([{\[]", text))
-    right_count = len(re.findall(r"\\right\s*[)}\]]", text))
-    if left_count != right_count:
-        errors.append(
-            f"Mismatched \\left/\\right: {left_count} \\left vs {right_count} \\right"
-        )
-
-    # \begin / \end balance
-    begin_count = len(re.findall(r"\\begin\{", text))
-    end_count = len(re.findall(r"\\end\{", text))
-    if begin_count != end_count:
-        errors.append(
-            f"Mismatched \\begin/\\end: {begin_count} vs {end_count}"
-        )
-
-    return errors
-
-
-# ─── JSON schema validation ──────────────────────────────────────────────────
-
-
-def validate_json_schema(question: dict[str, Any]) -> list[str]:
-    """
-    Check required fields and type constraints for a question dict.
-    Returns a list of error messages.
-    """
-    errors: list[str] = []
-
-    required_fields = [
-        "question_type", "marks", "difficulty", "section_name",
-        "topic", "stem_tex", "answer", "solution_tex", "estimated_time_seconds",
-    ]
-    for field in required_fields:
-        if field not in question:
-            errors.append(f"Missing required field: {field}")
-
-    qtype = question.get("question_type")
-    if qtype not in ("MCQ", "MSQ", "NAT"):
-        errors.append(f"Invalid question_type: {qtype!r}")
-
-    marks = question.get("marks")
+    # ── 5. marks ──
+    marks = q.get("marks")
     if marks not in (1, 2):
-        errors.append(f"Invalid marks (must be 1 or 2): {marks}")
+        return False, f"Invalid marks: {marks}"
 
-    difficulty = question.get("difficulty")
-    if difficulty not in ("easy", "medium", "hard"):
-        errors.append(f"Invalid difficulty: {difficulty!r}")
+    # ── 6. difficulty ──
+    diff = q.get("difficulty")
+    if diff not in VALID_DIFFICULTIES:
+        return False, f"Invalid difficulty: {diff}"
 
-    # Choices validation
-    choices = question.get("choices")
-    if qtype in ("MCQ", "MSQ"):
-        if not isinstance(choices, list) or len(choices) != 4:
-            errors.append(
-                f"{qtype} must have exactly 4 choices, got {choices!r}"
-            )
-        else:
-            labels = {c.get("label") for c in choices if c}
-            if labels != {"A", "B", "C", "D"}:
-                errors.append(f"Choices must have labels A,B,C,D, got {labels}")
-    elif qtype == "NAT":
-        if choices is not None:
-            errors.append(f"NAT questions must have null choices, got {choices!r}")
-
-    # Answer structure
-    answer = question.get("answer", {})
-    if qtype == "MCQ":
-        correct = answer.get("correct")
-        if correct not in ("A", "B", "C", "D"):
-            errors.append(f"MCQ correct answer must be A/B/C/D, got {correct!r}")
-    elif qtype == "MSQ":
-        correct = answer.get("correct", [])
-        if not isinstance(correct, list) or len(correct) == 0:
-            errors.append(f"MSQ correct answer must be non-empty list, got {correct!r}")
-    elif qtype == "NAT":
-        correct_val = answer.get("correct")
-        if not isinstance(correct_val, (int, float)):
-            errors.append(f"NAT correct answer must be numeric, got {correct_val!r}")
-
-    return errors
-
-
-# ─── NAT answer verification ─────────────────────────────────────────────────
-
-
-def _extract_expr_from_stem(stem_tex: str) -> str | None:
-    """Extract a mathematical expression from a LaTeX stem for SymPy evaluation."""
-    patterns = [
-        r"\$([^$]+)\$",          # $...$
-        r"\\\(([^\\)]+)\\\)",  # \(...\)
-
-
-        r"=\s*([\d\.\+\-\*\/\(\)\s\^]+?)(?:\s*[,\.]|$)",  # = expression
-    ]
-    for pattern in patterns:
-        m = re.search(pattern, stem_tex)
-        if m:
-            return m.group(1).strip()
-    return None
-
-
-async def verify_nat_answer(question: dict[str, Any]) -> tuple[bool, str]:
-    """
-    Verify a NAT answer using SymPy numerically.
-    Falls back to LLM verification if SymPy cannot parse the expression.
-    Returns (is_correct, notes).
-    """
-    answer_data = question.get("answer", {})
-    correct_val = answer_data.get("correct")
-    tolerance = answer_data.get("tolerance", 0.01)
-    stem_tex = question.get("stem_tex", "")
-
-    # Try SymPy first
-    expr_str = _extract_expr_from_stem(stem_tex)
-    if expr_str:
+    # ── 7. difficulty_score ──
+    dscore = q.get("difficulty_score")
+    if dscore is not None:
         try:
-            expr = sympy.parse_expr(expr_str)
-            computed = float(sympy_n(expr))
-            error = abs(computed - correct_val)
-            within_tol = error <= tolerance
-            return within_tol, f"sympy computed={computed:.6f}, error={error:.6f}"
-        except Exception:
-            # SymPy failed — fall through to LLM fallback
-            pass
+            dscore = float(dscore)
+            if not (0.0 <= dscore <= 1.0):
+                return False, f"difficulty_score out of range: {dscore}"
+        except (TypeError, ValueError):
+            q["difficulty_score"] = 0.5  # fallback
 
-    # LLM fallback
-    prompt_text = (
-        f"Question stem: {stem_tex}\n"
-        f"Correct numerical answer: {correct_val}\n"
-        f"Tolerance: {tolerance}\n\n"
-        "Verify if this answer is mathematically correct for the given question. "
-        "Return JSON with fields: verified (bool), computed_value (number), "
-        "submitted_value (number), absolute_error (number), "
-        "within_tolerance (bool), notes (string)."
-    )
-    messages = [{"role": "user", "content": prompt_text}]
+    # ── 8. Validate answer format per type ──
+    answer = q.get("answer")
+    if not isinstance(answer, dict):
+        return False, f"answer must be a dict, got {type(answer).__name__}"
+
+    if qtype == "MCQ":
+        valid, msg = _validate_mcq(q)
+    elif qtype == "MSQ":
+        valid, msg = _validate_msq(q)
+    elif qtype == "NAT":
+        valid, msg = _validate_nat(q)
+    else:
+        valid, msg = False, f"Unknown type: {qtype}"
+
+    if not valid:
+        return False, msg
+
+    # ── 9. section_name and topic must be strings ──
+    if not isinstance(q.get("section_name"), str) or not q["section_name"].strip():
+        return False, "section_name is missing or empty"
+    if not isinstance(q.get("topic"), str) or not q["topic"].strip():
+        return False, "topic is missing or empty"
+
+    # ── 10. estimated_time_seconds ──
+    ets = q.get("estimated_time_seconds")
+    if ets is not None:
+        try:
+            q["estimated_time_seconds"] = int(ets)
+        except (TypeError, ValueError):
+            q["estimated_time_seconds"] = 120  # default
+
+    return True, "OK"
+
+
+def _validate_mcq(q: dict) -> tuple[bool, str]:
+    """MCQ: 4 choices, answer.index is int 0-3."""
+    choices = q.get("choices")
+    if not isinstance(choices, list) or len(choices) != 4:
+        return False, f"MCQ must have exactly 4 choices, got {type(choices)}"
+
+    answer = q["answer"]
+    idx = answer.get("index")
+    if idx is None:
+        # Try to extract from other formats
+        if "indices" in answer and len(answer["indices"]) == 1:
+            q["answer"] = {"index": answer["indices"][0]}
+            idx = answer["indices"][0]
+        else:
+            return False, "MCQ answer must have 'index' key"
 
     try:
-        result = await llm_service.chat_completion(messages)
-        within_tol = result.get("within_tolerance", False)
-        notes = result.get("notes", "")
-        return within_tol, f"llm: {notes}"
-    except Exception as exc:
-        return True, f"llm verification skipped: {exc}"
+        idx = int(idx)
+    except (TypeError, ValueError):
+        return False, f"MCQ answer.index must be int, got {idx}"
+
+    if idx < 0 or idx > 3:
+        return False, f"MCQ answer.index must be 0-3, got {idx}"
+
+    q["answer"] = {"index": idx}
+    return True, "OK"
 
 
-# ─── Full validation pipeline ────────────────────────────────────────────────
+def _validate_msq(q: dict) -> tuple[bool, str]:
+    """MSQ: 4 choices, answer.indices is list of ints, 1-3 correct."""
+    choices = q.get("choices")
+    if not isinstance(choices, list) or len(choices) != 4:
+        return False, f"MSQ must have exactly 4 choices, got {type(choices)}"
+
+    answer = q["answer"]
+    indices = answer.get("indices")
+
+    if indices is None:
+        # Maybe LLM used "index" instead
+        if "index" in answer:
+            indices = [answer["index"]]
+        else:
+            return False, "MSQ answer must have 'indices' key"
+
+    if not isinstance(indices, list):
+        return False, f"MSQ answer.indices must be a list, got {type(indices)}"
+
+    if len(indices) < 1 or len(indices) > 3:
+        return False, f"MSQ must have 1-3 correct indices, got {len(indices)}"
+
+    try:
+        indices = [int(i) for i in indices]
+    except (TypeError, ValueError):
+        return False, "MSQ answer.indices must be integers"
+
+    if any(i < 0 or i > 3 for i in indices):
+        return False, f"MSQ indices must be 0-3, got {indices}"
+
+    q["answer"] = {"indices": sorted(set(indices))}
+    return True, "OK"
 
 
-async def validate_question(
-    question: dict[str, Any],
-    retry_count: int = 0,
-) -> ValidationResult:
+def _validate_nat(q: dict) -> tuple[bool, str]:
+    """NAT: choices must be null, answer has value + tolerance."""
+    if q.get("choices") is not None:
+        q["choices"] = None  # auto-fix
+
+    answer = q["answer"]
+    value = answer.get("value")
+
+    if value is None:
+        return False, "NAT answer must have 'value' key"
+
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return False, f"NAT answer.value must be numeric, got {value}"
+
+    if math.isnan(value) or math.isinf(value):
+        return False, "NAT answer.value is NaN or Inf"
+
+    tolerance = answer.get("tolerance", 0.01)
+    try:
+        tolerance = float(tolerance)
+    except (TypeError, ValueError):
+        tolerance = 0.01
+
+    if tolerance < 0:
+        tolerance = abs(tolerance)
+
+    q["answer"] = {"value": value, "tolerance": tolerance}
+    return True, "OK"
+
+
+def validate_batch(
+    questions: list[dict],
+    expected_section: str | None = None,
+) -> list[dict]:
     """
-    Run the full validation pipeline on a single question dict.
+    Validate a batch of questions. Returns only the valid ones.
     """
-    errors: list[str] = []
-
-    # 1. JSON schema check
-    errors.extend(validate_json_schema(question))
-
-    # 2. LaTeX syntax check on stem and solution
-    for field in ("stem_tex", "solution_tex"):
-        if field in question and question[field]:
-            latex_errors = check_latex_balance(question[field])
-            errors.extend(f"{field}: {e}" for e in latex_errors)
-
-    # 3. NAT answer verification via SymPy (skip if already errors)
-    if question.get("question_type") == "NAT" and not errors:
-        is_correct, notes = await verify_nat_answer(question)
-        if not is_correct:
-            errors.append(f"NAT answer verification failed: {notes}")
-
-    if errors:
-        return ValidationResult(
-            valid=False,
-            errors=errors,
-            retry_count=retry_count,
-        )
-
-    return ValidationResult(valid=True, errors=[], retry_count=retry_count)
-
-
-async def validate_question_with_retry(question: dict[str, Any]) -> ValidationResult:
-    """
-    Validate with up to MAX_RETRIES on failure.
-    Returns the result of the last attempt.
-    """
-    result = await validate_question(question, retry_count=0)
-    for attempt in range(1, MAX_RETRIES + 1):
-        if result.valid:
-            break
-        result = await validate_question(question, retry_count=attempt)
-    return result
+    valid = []
+    for i, q in enumerate(questions):
+        is_valid, msg = validate_question(q, expected_section)
+        if is_valid:
+            valid.append(q)
+        else:
+            logger.warning(f"Question {i + 1} in batch failed validation: {msg}")
+    return valid

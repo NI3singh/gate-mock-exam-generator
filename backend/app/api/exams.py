@@ -1,6 +1,7 @@
+import asyncio
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +11,7 @@ from app.models.user import User
 from app.models.exam import Exam
 from app.models.syllabus import Syllabus
 from app.schemas.exam import ExamGenerateRequest, ExamGenerateResponse, ExamSummary
-from app.services.llm_queue import enqueue, GenerationJob
+from app.services.question_generator import run_generation
 
 router = APIRouter()
 
@@ -23,14 +24,12 @@ router = APIRouter()
 )
 async def generate_exam(
     body: ExamGenerateRequest,
-    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Validates the exam configuration, creates an exam row with
-    status 'generating', and enqueues the generation job for
-    background processing by the LLM queue worker.
+    status 'generating', kicks off background generation, and returns exam_id.
     """
 
     # ── 1. Validate paper has syllabus data loaded ──
@@ -44,7 +43,7 @@ async def generate_exam(
             "Please call POST /api/v1/admin/load-data first.",
         )
 
-    # ── 2. Validate GA syllabus exists (needed for every exam) ──
+    # ── 2. Validate GA syllabus exists ──
     ga_count_result = await db.execute(
         select(Syllabus.id).where(Syllabus.paper == "GA").limit(1)
     )
@@ -63,7 +62,6 @@ async def generate_exam(
                 detail="When scope is 'topic', you must select at least one topic.",
             )
 
-        # Fetch all valid topics for this paper from the database
         valid_topics_result = await db.execute(
             select(Syllabus.topic).where(Syllabus.paper == body.paper)
         )
@@ -94,7 +92,7 @@ async def generate_exam(
         scope=body.scope,
         selected_topics=body.selected_topics if body.scope == "topic" else None,
         difficulty=body.difficulty,
-        use_pyq_reference=False,  # Disabled — no RAG in v1
+        use_pyq_reference=False,
         types_ratio={
             "MCQ": body.types_ratio.MCQ,
             "MSQ": body.types_ratio.MSQ,
@@ -103,35 +101,22 @@ async def generate_exam(
         total_questions=65,
         total_marks=100,
         duration_minutes=180,
-        question_ids=[],       # Will be populated by generation worker
-        question_order=[],     # Will be populated by generation worker
+        question_ids=[],
+        question_order=[],
         status="generating",
         generation_progress={"total": 65, "completed": 0, "failed": 0},
     )
 
     db.add(exam)
     await db.commit()
-    await db.refresh(exam)
 
-    # ── Enqueue generation job ──
-    job = GenerationJob(
-        exam_id=exam.id,
-        paper=body.paper,
-        scope=body.scope,
-        selected_topics=body.selected_topics if body.scope == "topic" else None,
-        difficulty=body.difficulty,
-        types_ratio={
-            "MCQ": body.types_ratio.MCQ,
-            "MSQ": body.types_ratio.MSQ,
-            "NAT": body.types_ratio.NAT,
-        },
-    )
-    background_tasks.add_task(enqueue, job)
+    # ── 6. Kick off background generation ──
+    asyncio.create_task(run_generation(exam_id))
 
     return ExamGenerateResponse(
         exam_id=exam.id,
         status=exam.status,
-        message="Exam configuration saved. Generation will begin shortly.",
+        message="Exam generation started. Poll GET /exams/{id}/status for progress.",
     )
 
 
@@ -171,14 +156,17 @@ async def list_exams(
 
 @router.get(
     "/{exam_id}/status",
-    summary="Get exam generation status",
+    summary="Poll exam generation progress",
 )
 async def get_exam_status(
     exam_id: uuid.UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Poll this endpoint to check generation progress."""
+    """
+    Returns current generation status and progress.
+    Frontend polls this every 3 seconds during generation.
+    """
     result = await db.execute(
         select(Exam).where(Exam.id == exam_id, Exam.user_id == user.id)
     )
@@ -190,8 +178,42 @@ async def get_exam_status(
             detail="Exam not found.",
         )
 
+    progress = exam.generation_progress or {}
+
     return {
-        "exam_id": exam.id,
+        "exam_id": str(exam.id),
         "status": exam.status,
-        "progress": exam.generation_progress,
+        "progress": {
+            "total": progress.get("total", 65),
+            "completed": progress.get("completed", 0),
+            "failed": progress.get("failed", 0),
+            "batch": progress.get("batch"),
+            "error": progress.get("error"),
+        },
     }
+
+
+@router.delete(
+    "/{exam_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an exam",
+)
+async def delete_exam(
+    exam_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an exam and its associated data."""
+    result = await db.execute(
+        select(Exam).where(Exam.id == exam_id, Exam.user_id == user.id)
+    )
+    exam = result.scalar_one_or_none()
+
+    if exam is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Exam not found.",
+        )
+
+    await db.delete(exam)
+    await db.commit()
