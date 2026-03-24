@@ -26,7 +26,7 @@ class Settings:
     NEBIUS_BASE_URL: str = os.getenv(
     "NEBIUS_BASE_URL", "https://api.studio.nebius.com/v1/"
     )
-    NEBIUS_MODEL: str = os.getenv("NEBIUS_MODEL", "google/gemma-3-27b-it")
+    NEBIUS_MODEL: str = os.getenv("NEBIUS_MODEL", "deepseek-ai/DeepSeek-V3.2")
 
     # LLM defaults
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "16000"))

@@ -86,30 +86,153 @@ async def call_llm(
     )
 
 
+def _fix_json_latex_escapes(text: str) -> str:
+    """
+    Character-by-character fix for unescaped LaTeX backslashes inside JSON strings.
+
+    LLMs frequently output LaTeX commands with single backslashes inside JSON,
+    e.g.:  \\pi  \\frac  \\sigma  \\mathbb  \\nabla  \\texttt  \\{  \\}
+    These are INVALID JSON escape sequences and cause json.loads to crash.
+
+    JSON only allows these escape sequences:
+        \\"  \\\\  \\/  \\b  \\f  \\n  \\r  \\t  \\uXXXX
+
+    Anything else (\\p, \\m, \\s, \\{, \\J, \\l, etc.) is invalid.
+    Also \\f, \\n, \\b, \\r, \\t followed by a letter means a LaTeX command
+    (\\frac, \\nabla, \\begin, \\right, \\times) not a JSON control char.
+
+    Strategy: walk character-by-character, track whether we are inside a JSON
+    string, and whenever we see a backslash that starts an invalid escape,
+    double it.
+    """
+    result = []
+    i = 0
+    in_string = False
+
+    while i < len(text):
+        c = text[i]
+
+        # ── Outside a JSON string ─────────────────────────────────────────────
+        if not in_string:
+            result.append(c)
+            if c == '"':
+                in_string = True
+            i += 1
+            continue
+
+        # ── Inside a JSON string ──────────────────────────────────────────────
+        if c == '"':
+            # Unescaped quote ends the string
+            in_string = False
+            result.append(c)
+            i += 1
+            continue
+
+        if c != '\\':
+            result.append(c)
+            i += 1
+            continue
+
+        # ── We have a backslash inside a JSON string ──────────────────────────
+        if i + 1 >= len(text):
+            # Backslash at very end of input — keep as-is
+            result.append(c)
+            i += 1
+            continue
+
+        nxt = text[i + 1]
+
+        # Always-valid JSON escape sequences: \", \\, \/
+        if nxt in '"\\/':
+            result.append(c)
+            result.append(nxt)
+            i += 2
+            continue
+
+        # Unicode escape \uXXXX — valid only if followed by exactly 4 hex digits
+        if nxt == 'u':
+            hex_chars = text[i + 2: i + 6]
+            if len(hex_chars) == 4 and all(
+                h in '0123456789abcdefABCDEF' for h in hex_chars
+            ):
+                # Valid \uXXXX — keep all 6 chars
+                result.append(c)
+                result.append(nxt)
+                i += 2
+                continue
+            else:
+                # \u NOT followed by 4 hex digits → LaTeX (\underbrace, \uparrow…)
+                result.append('\\')
+                result.append('\\')
+                i += 1
+                continue
+
+        # Ambiguous: \b \f \n \r \t
+        # These are valid JSON control chars BUT also start many LaTeX commands:
+        #   \frac \nabla \begin \right \times \boldsymbol \newline ...
+        # Heuristic: if the char AFTER nxt is a letter → it is a LaTeX command.
+        #   \frac{  → nxt='f', after='r' (letter) → double backslash
+        #   \nabla  → nxt='n', after='a' (letter) → double backslash
+        #   "text\n"→ nxt='n', after='"' (not letter) → keep as JSON \n
+        if nxt in 'bfnrt':
+            after_nxt = text[i + 2] if i + 2 < len(text) else ''
+            if after_nxt.isalpha():
+                # LaTeX command → double the backslash, don't consume nxt
+                result.append('\\')
+                result.append('\\')
+                i += 1
+            else:
+                # Legitimate JSON control character
+                result.append(c)
+                result.append(nxt)
+                i += 2
+            continue
+
+        # Everything else: \p \m \s \l \a \c \d \{ \} \( \) \^ \_ \| \> \J …
+        # All invalid in JSON → double the backslash, leave next char in stream
+        result.append('\\')
+        result.append('\\')
+        i += 1
+
+    return ''.join(result)
+
+
 def extract_json_array(text: str) -> list[dict]:
     """
     Extract a JSON array from LLM response text.
-    Handles markdown code fences and extra surrounding text.
+
+    Steps:
+      1. Strip markdown code fences if present.
+      2. Find the outermost [ ... ] array.
+      3. Fix any unescaped LaTeX backslashes (character-by-character).
+      4. Parse JSON and return.
     """
     cleaned = text.strip()
 
-    # 1. Try markdown code fence: ```json ... ``` or ``` ... ```
-    fence_pattern = r"```(?:json)?\s*\n?(.*?)\n?\s*```"
-    match = re.search(fence_pattern, cleaned, re.DOTALL)
-    if match:
-        cleaned = match.group(1).strip()
+    # Step 1 — strip ```json ... ``` or ``` ... ``` fences
+    fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", cleaned, re.DOTALL)
+    if fence_match:
+        cleaned = fence_match.group(1).strip()
 
-    # 2. Find the outermost [ ... ]
+    # Step 2 — find outermost [ ... ]
     start = cleaned.find("[")
     end = cleaned.rfind("]")
     if start != -1 and end != -1 and end > start:
-        cleaned = cleaned[start : end + 1]
+        cleaned = cleaned[start: end + 1]
 
-    # 3. Parse JSON
+    # Step 3 — fix LaTeX backslash escaping before parsing
+    fixed = _fix_json_latex_escapes(cleaned)
+
+    # Step 4 — parse JSON
     try:
-        parsed = json.loads(cleaned)
+        parsed = json.loads(fixed)
     except json.JSONDecodeError as exc:
-        logger.error(f"JSON parse error: {exc}\nRaw text:\n{text[:500]}")
+        # Log BOTH original and fixed text so we can diagnose remaining issues
+        logger.error(
+            f"JSON parse error after escape-fix: {exc}\n"
+            f"--- Original LLM text (first 600 chars) ---\n{text[:600]}\n"
+            f"--- Fixed text (first 600 chars) ---\n{fixed[:600]}"
+        )
         raise ValueError(f"Failed to parse LLM response as JSON: {exc}")
 
     if not isinstance(parsed, list):

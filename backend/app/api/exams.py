@@ -1,5 +1,6 @@
 import asyncio
-import uuid
+import uuid as uuid_module
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -9,12 +10,23 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.exam import Exam
+from app.models.attempt import Attempt
 from app.models.syllabus import Syllabus
-from app.schemas.exam import ExamGenerateRequest, ExamGenerateResponse, ExamSummary
+from app.models.question_bank import QuestionBank
+from app.schemas.exam import (
+    ExamGenerateRequest,
+    ExamGenerateResponse,
+    ExamSummary,
+    ExamScreenResponse,
+    QuestionItem,
+    AttemptStartResponse,
+)
 from app.services.question_generator import run_generation
 
 router = APIRouter()
 
+
+# ── POST /exams/generate ──────────────────────────────────────────────────────
 
 @router.post(
     "/generate",
@@ -27,11 +39,6 @@ async def generate_exam(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Validates the exam configuration, creates an exam row with
-    status 'generating', kicks off background generation, and returns exam_id.
-    """
-
     # ── 1. Validate paper has syllabus data loaded ──
     paper_count_result = await db.execute(
         select(Syllabus.id).where(Syllabus.paper == body.paper).limit(1)
@@ -54,19 +61,17 @@ async def generate_exam(
             "Please call POST /api/v1/admin/load-data first.",
         )
 
-    # ── 3. If scope is 'topic', validate selected_topics ──
+    # ── 3. Validate selected_topics if scope is 'topic' ──
     if body.scope == "topic":
         if not body.selected_topics or len(body.selected_topics) == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="When scope is 'topic', you must select at least one topic.",
             )
-
         valid_topics_result = await db.execute(
             select(Syllabus.topic).where(Syllabus.paper == body.paper)
         )
         valid_topics = {row[0] for row in valid_topics_result.fetchall()}
-
         invalid = [t for t in body.selected_topics if t not in valid_topics]
         if invalid:
             raise HTTPException(
@@ -83,8 +88,7 @@ async def generate_exam(
         )
 
     # ── 5. Create exam row ──
-    exam_id = uuid.uuid4()
-
+    exam_id = uuid_module.uuid4()
     exam = Exam(
         id=exam_id,
         user_id=user.id,
@@ -106,7 +110,6 @@ async def generate_exam(
         status="generating",
         generation_progress={"total": 65, "completed": 0, "failed": 0},
     )
-
     db.add(exam)
     await db.commit()
 
@@ -120,6 +123,8 @@ async def generate_exam(
     )
 
 
+# ── GET /exams ────────────────────────────────────────────────────────────────
+
 @router.get(
     "",
     response_model=list[ExamSummary],
@@ -129,14 +134,12 @@ async def list_exams(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Returns all exams created by the current user, newest first."""
     result = await db.execute(
         select(Exam)
         .where(Exam.user_id == user.id)
         .order_by(Exam.created_at.desc())
     )
     exams = result.scalars().all()
-
     return [
         ExamSummary(
             id=e.id,
@@ -154,32 +157,25 @@ async def list_exams(
     ]
 
 
+# ── GET /exams/{exam_id}/status ───────────────────────────────────────────────
+
 @router.get(
     "/{exam_id}/status",
     summary="Poll exam generation progress",
 )
 async def get_exam_status(
-    exam_id: uuid.UUID,
+    exam_id: uuid_module.UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Returns current generation status and progress.
-    Frontend polls this every 3 seconds during generation.
-    """
     result = await db.execute(
         select(Exam).where(Exam.id == exam_id, Exam.user_id == user.id)
     )
     exam = result.scalar_one_or_none()
-
     if exam is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Exam not found.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found.")
 
     progress = exam.generation_progress or {}
-
     return {
         "exam_id": str(exam.id),
         "status": exam.status,
@@ -193,27 +189,250 @@ async def get_exam_status(
     }
 
 
+# ── POST /exams/{exam_id}/start ───────────────────────────────────────────────
+
+@router.post(
+    "/{exam_id}/start",
+    response_model=AttemptStartResponse,
+    summary="Start or resume an exam attempt",
+)
+async def start_exam(
+    exam_id: uuid_module.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Creates a new attempt for the exam, or resumes an existing in-progress one.
+    Records server-side start_time for the authoritative timer.
+    Returns the attempt with any previously saved responses (for resume).
+    """
+    # ── 1. Get exam ──
+    result = await db.execute(
+        select(Exam).where(Exam.id == exam_id, Exam.user_id == user.id)
+    )
+    exam = result.scalar_one_or_none()
+    if exam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found.")
+
+    if exam.status == "generating":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Exam is still being generated. Please wait.",
+        )
+    if exam.status == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Exam generation failed. Please generate a new exam.",
+        )
+    if exam.status == "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This exam has already been completed.",
+        )
+    if exam.status not in ("generated", "in_progress"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot start exam with status '{exam.status}'.",
+        )
+
+    now = datetime.now(timezone.utc)
+    duration_seconds = exam.duration_minutes * 60
+
+    # ── 2. Check for existing in-progress attempt (resume) ──
+    existing_result = await db.execute(
+        select(Attempt).where(
+            Attempt.exam_id == exam_id,
+            Attempt.user_id == user.id,
+            Attempt.submitted == False,  # noqa: E712
+        )
+    )
+    existing = existing_result.scalar_one_or_none()
+
+    if existing is not None:
+        # Resume existing attempt
+        elapsed = (now - existing.start_time).total_seconds()
+        remaining = max(0, duration_seconds - int(elapsed))
+
+        if remaining <= 0:
+            # Time has expired — auto-submit
+            existing.submitted = True
+            existing.auto_submitted = True
+            existing.end_time = now
+            exam.status = "completed"
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Exam time has expired. The attempt has been auto-submitted.",
+            )
+
+        return AttemptStartResponse(
+            attempt_id=str(existing.id),
+            exam_id=str(exam.id),
+            start_time=existing.start_time.isoformat(),
+            remaining_seconds=remaining,
+            responses=existing.responses or {},
+            question_statuses=existing.question_statuses or {},
+            submitted=existing.submitted,
+            is_resume=True,
+        )
+
+    # ── 3. Create new attempt ──
+    attempt = Attempt(
+        id=uuid_module.uuid4(),
+        exam_id=exam.id,
+        user_id=user.id,
+        start_time=now,
+        submitted=False,
+        auto_submitted=False,
+        responses={},
+        question_statuses={},
+        events_log=[],
+        max_score=exam.total_marks,
+    )
+    db.add(attempt)
+
+    # Update exam status to in_progress
+    exam.status = "in_progress"
+    await db.commit()
+
+    return AttemptStartResponse(
+        attempt_id=str(attempt.id),
+        exam_id=str(exam.id),
+        start_time=now.isoformat(),
+        remaining_seconds=duration_seconds,
+        responses={},
+        question_statuses={},
+        submitted=False,
+        is_resume=False,
+    )
+
+
+# ── GET /exams/{exam_id} ──────────────────────────────────────────────────────
+
+@router.get(
+    "/{exam_id}",
+    response_model=ExamScreenResponse,
+    summary="Get exam questions for the exam screen (NO answers)",
+)
+async def get_exam(
+    exam_id: uuid_module.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Returns the exam with all questions in order, but WITHOUT correct answers.
+    Used by the exam screen to render questions.
+    """
+    # ── 1. Get exam ──
+    result = await db.execute(
+        select(Exam).where(Exam.id == exam_id, Exam.user_id == user.id)
+    )
+    exam = result.scalar_one_or_none()
+    if exam is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found.")
+
+    if exam.status == "generating":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Exam is still being generated.",
+        )
+    if exam.status == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Exam generation failed.",
+        )
+    if not exam.question_order:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Exam has no questions assembled yet.",
+        )
+
+    # ── 2. Build question_id → order_entry map ──
+    question_order: list[dict] = exam.question_order
+    id_to_order: dict[str, dict] = {
+        entry["question_id"]: entry
+        for entry in question_order
+        if entry.get("question_id")
+    }
+
+    # ── 3. Fetch questions from question_bank ──
+    valid_ids = list(id_to_order.keys())
+    if not valid_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No valid question IDs found in this exam.",
+        )
+
+    # Convert string UUIDs to uuid objects for SQLAlchemy query
+    uuid_ids = []
+    for qid in valid_ids:
+        try:
+            uuid_ids.append(uuid_module.UUID(qid))
+        except ValueError:
+            pass
+
+    qb_result = await db.execute(
+        select(QuestionBank).where(QuestionBank.id.in_(uuid_ids))
+    )
+    questions_map: dict[str, QuestionBank] = {
+        str(q.id): q for q in qb_result.scalars().all()
+    }
+
+    # ── 4. Build ordered list without answers ──
+    questions: list[QuestionItem] = []
+    for entry in question_order:
+        qid = entry.get("question_id", "")
+        q = questions_map.get(qid)
+        if not q:
+            continue
+
+        questions.append(
+            QuestionItem(
+                id=str(q.id),
+                qno=entry["qno"],
+                question_type=q.question_type,
+                marks=q.marks,
+                section=entry.get("section", "Subject"),
+                section_name=q.section_name,
+                topic=q.topic,
+                stem_tex=q.stem_tex,
+                code_snippet=q.code_snippet,
+                code_language=q.code_language,
+                choices=q.choices,
+                estimated_time_seconds=q.estimated_time_seconds,
+                # NOTE: answer is intentionally excluded
+            )
+        )
+
+    return ExamScreenResponse(
+        exam_id=str(exam.id),
+        paper=exam.paper,
+        difficulty=exam.difficulty,
+        total_questions=exam.total_questions,
+        total_marks=exam.total_marks,
+        duration_minutes=exam.duration_minutes,
+        questions=questions,
+    )
+
+
+# ── DELETE /exams/{exam_id} ───────────────────────────────────────────────────
+
 @router.delete(
     "/{exam_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete an exam",
 )
 async def delete_exam(
-    exam_id: uuid.UUID,
+    exam_id: uuid_module.UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete an exam and its associated data."""
     result = await db.execute(
         select(Exam).where(Exam.id == exam_id, Exam.user_id == user.id)
     )
     exam = result.scalar_one_or_none()
-
     if exam is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Exam not found.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found.")
 
     await db.delete(exam)
     await db.commit()

@@ -11,6 +11,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import GenerateExam from "./pages/GenerateExam";
 import ExamProgress from "./pages/ExamProgress";
+import ExamScreen from "./pages/ExamScreen";
+import ResultScreen from "./pages/ResultScreen";
 import Analytics from "./pages/Analytics";
 
 function App() {
@@ -54,6 +56,24 @@ function App() {
             element={
               <ProtectedRoute>
                 <ExamProgress />
+              </ProtectedRoute>
+            }
+          />
+          {/* Part 8: Exam Screen */}
+          <Route
+            path="/exam/:examId"
+            element={
+              <ProtectedRoute>
+                <ExamScreen />
+              </ProtectedRoute>
+            }
+          />
+          {/* Part 10: Result Screen */}
+          <Route
+            path="/result/:attemptId"
+            element={
+              <ProtectedRoute>
+                <ResultScreen />
               </ProtectedRoute>
             }
           />

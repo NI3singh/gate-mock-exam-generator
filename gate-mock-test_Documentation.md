@@ -1,3 +1,3959 @@
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\src\styles\index.css
+*Saved at: 3/24/2026, 2:45:35 PM*
+
+**[REMOVED]**
+```
+(from line ~1)
+@import 'katex/dist/katex.min.css'; 
+
+```
+**[ADDED]**
+```
+1     @import 'katex/dist/katex.min.css';
+2     
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\src\styles\index.css
+*Saved at: 3/24/2026, 2:45:33 PM*
+
+**[REMOVED]**
+```
+(from line ~1)
+@import 'katex/dist/katex.min.css';
+
+```
+**[ADDED]**
+```
+1     @import 'katex/dist/katex.min.css'; 
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\src\styles\index.css
+*Saved at: 3/24/2026, 2:45:32 PM*
+
+**[ADDED]**
+```
+1     @import 'katex/dist/katex.min.css';
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\src\styles\index.css
+*Saved at: 3/24/2026, 2:45:29 PM*
+
+**[REMOVED]**
+```
+(from line ~4)
+@import 'katex/dist/katex.min.css';
+
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\src\styles\index.css
+*Saved at: 3/24/2026, 1:59:55 PM*
+
+**[ADDED]**
+```
+4     @import 'katex/dist/katex.min.css';
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\schemas\exam.py
+*Saved at: 3/24/2026, 10:03:19 AM*
+
+**[ADDED]**
+```
+8     # ── Existing schemas (unchanged) ──────────────────────────────────────────────
+9     
+```
+**[REMOVED]**
+```
+(from line ~57)
+        # Will be validated against DB in the endpoint
+
+```
+**[REMOVED]**
+```
+(from line ~79)
+        from_attributes = True
+```
+**[ADDED]**
+```
+79            from_attributes = True
+80    
+81    
+82    # ── Part 8: Exam screen schemas ───────────────────────────────────────────────
+83    
+84    class QuestionItem(BaseModel):
+85        """
+86        Single question for the exam screen.
+87        CRITICAL: Does NOT contain the answer field.
+88        """
+89        id: str
+90        qno: int
+91        question_type: str          # 'MCQ', 'MSQ', 'NAT'
+92        marks: int                  # 1 or 2
+93        section: str                # 'GA' or 'Subject'
+94        section_name: str           # e.g. 'General Aptitude', 'Linear Algebra'
+95        topic: str
+96        stem_tex: str               # Question text with LaTeX math
+97        code_snippet: Optional[str] = None
+98        code_language: Optional[str] = None
+99        choices: Optional[list[str]] = None   # 4 choices for MCQ/MSQ, null for NAT
+100       estimated_time_seconds: Optional[int] = None
+101   
+102   
+103   class ExamScreenResponse(BaseModel):
+104       """Full exam data returned for the exam screen."""
+105       exam_id: str
+106       paper: str
+107       difficulty: str
+108       total_questions: int
+109       total_marks: int
+110       duration_minutes: int
+111       questions: list[QuestionItem]   # Ordered by qno, NO answers
+112   
+113   
+114   class AttemptStartResponse(BaseModel):
+115       """
+116       Response from POST /exams/{id}/start.
+117       Returns attempt ID, server start time, and any saved responses for resume.
+118       """
+119       attempt_id: str
+120       exam_id: str
+121       start_time: str         # ISO 8601 datetime string
+122       remaining_seconds: int  # Seconds left in the exam
+123       responses: dict         # Previously saved responses (for resume)
+124       question_statuses: dict # Previously saved statuses (for resume)
+125       submitted: bool         # True if already submitted (should not reach exam screen)
+126       is_resume: bool = False # True if resuming an existing attempt
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\__init__.py
+*Saved at: 3/24/2026, 10:02:59 AM*
+
+**[REMOVED]**
+```
+(from line ~6)
+from app.models.exam import exam
+
+```
+**[ADDED]**
+```
+6     from app.models.exam import Exam
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\exam.py
+*Saved at: 3/24/2026, 10:02:49 AM*
+
+**[REMOVED]**
+```
+(from line ~1)
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+
+```
+**[ADDED]**
+```
+1     import uuid
+```
+**[REMOVED]**
+```
+(from line ~3)
+from pydantic import BaseModel, field_validator
+
+```
+**[ADDED]**
+```
+3     from sqlalchemy import String, Integer, JSON, Boolean, ForeignKey
+4     from sqlalchemy.dialects.postgresql import UUID as PG_UUID, TIMESTAMP
+5     from sqlalchemy.orm import Mapped, mapped_column
+6     from sqlalchemy import func
+```
+**[ADDED]**
+```
+8     from app.core.database import Base
+```
+**[REMOVED]**
+```
+(from line ~10)
+# ── Existing schemas (unchanged) ──────────────────────────────────────────────
+
+```
+**[REMOVED]**
+```
+(from line ~11)
+class TypesRatio(BaseModel):
+    MCQ: float = 0.6
+    MSQ: float = 0.2
+    NAT: float = 0.2
+
+```
+**[ADDED]**
+```
+11    class Exam(Base):
+12        __tablename__ = "exams"
+```
+**[REMOVED]**
+```
+(from line ~14)
+    @field_validator("MCQ", "MSQ", "NAT")
+    @classmethod
+    def validate_ratio(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("Ratio values must be between 0 and 1")
+        return v
+
+
+class ExamGenerateRequest(BaseModel):
+    paper: str
+    scope: str  # 'full' or 'topic'
+    selected_topics: Optional[list[str]] = None
+    difficulty: str  # 'easy', 'medium', 'hard', 'auto'
+    types_ratio: TypesRatio = TypesRatio()
+
+    @field_validator("paper")
+    @classmethod
+    def validate_paper(cls, v: str) -> str:
+        v = v.upper()
+        if v not in ("CS", "DA"):
+            raise ValueError("paper must be 'CS' or 'DA'")
+        return v
+
+    @field_validator("scope")
+    @classmethod
+    def validate_scope(cls, v: str) -> str:
+        v = v.lower()
+        if v not in ("full", "topic"):
+            raise ValueError("scope must be 'full' or 'topic'")
+        return v
+
+    @field_validator("difficulty")
+    @classmethod
+    def validate_difficulty(cls, v: str) -> str:
+        v = v.lower()
+        if v not in ("easy", "medium", "hard", "auto"):
+            raise ValueError("difficulty must be 'easy', 'medium', 'hard', or 'auto'")
+        return v
+
+    @field_validator("selected_topics")
+    @classmethod
+    def validate_selected_topics(cls, v: Optional[list[str]], info) -> Optional[list[str]]:
+        return v
+
+
+class ExamGenerateResponse(BaseModel):
+    exam_id: UUID
+    status: str
+    message: str
+
+
+class ExamSummary(BaseModel):
+    id: UUID
+    paper: str
+    scope: str
+    selected_topics: Optional[list[str]] = None
+    difficulty: str
+    total_questions: int
+    total_marks: int
+    duration_minutes: int
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Part 8: Exam screen schemas ───────────────────────────────────────────────
+
+class QuestionItem(BaseModel):
+    """
+    Single question for the exam screen.
+    CRITICAL: Does NOT contain the answer field.
+    """
+    id: str
+    qno: int
+    question_type: str          # 'MCQ', 'MSQ', 'NAT'
+    marks: int                  # 1 or 2
+    section: str                # 'GA' or 'Subject'
+    section_name: str           # e.g. 'General Aptitude', 'Linear Algebra'
+    topic: str
+    stem_tex: str               # Question text with LaTeX math
+    code_snippet: Optional[str] = None
+    code_language: Optional[str] = None
+    choices: Optional[list[str]] = None   # 4 choices for MCQ/MSQ, null for NAT
+    estimated_time_seconds: Optional[int] = None
+
+
+class ExamScreenResponse(BaseModel):
+    """Full exam data returned for the exam screen."""
+    exam_id: str
+    paper: str
+    difficulty: str
+    total_questions: int
+    total_marks: int
+    duration_minutes: int
+    questions: list[QuestionItem]   # Ordered by qno, NO answers
+
+
+class AttemptStartResponse(BaseModel):
+    """
+    Response from POST /exams/{id}/start.
+    Returns attempt ID, server start time, and any saved responses for resume.
+    """
+    attempt_id: str
+    exam_id: str
+    start_time: str         # ISO 8601 datetime string
+    remaining_seconds: int  # Seconds left in the exam
+    responses: dict         # Previously saved responses (for resume)
+    question_statuses: dict # Previously saved statuses (for resume)
+    submitted: bool         # True if already submitted (should not reach exam screen)
+    is_resume: bool = False # True if resuming an existing attempt
+```
+**[ADDED]**
+```
+14        id: Mapped[uuid.UUID] = mapped_column(
+15            PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+16        )
+17        user_id: Mapped[uuid.UUID] = mapped_column(
+18            PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+19        )
+20        paper: Mapped[str] = mapped_column(String(10), nullable=False)
+21        scope: Mapped[str] = mapped_column(String(20), nullable=False)
+22        selected_topics: Mapped[list | None] = mapped_column(JSON, nullable=True)
+23        difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
+24        use_pyq_reference: Mapped[bool] = mapped_column(Boolean, default=True)
+25        types_ratio: Mapped[dict] = mapped_column(
+26            JSON, default={"MCQ": 0.6, "MSQ": 0.2, "NAT": 0.2}
+27        )
+28        total_questions: Mapped[int] = mapped_column(Integer, default=65)
+29        total_marks: Mapped[int] = mapped_column(Integer, default=100)
+30        duration_minutes: Mapped[int] = mapped_column(Integer, default=180)
+31        question_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+32        question_order: Mapped[list] = mapped_column(JSON, nullable=False)
+33        status: Mapped[str] = mapped_column(String(20), default="generated")
+34        generation_progress: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+35        created_at: Mapped[str] = mapped_column(
+36            TIMESTAMP(timezone=True), server_default=func.now()
+37        )
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\exam.py
+*Saved at: 3/24/2026, 10:00:02 AM*
+
+**[ADDED]**
+```
+1     from datetime import datetime
+2     from typing import Optional
+3     from uuid import UUID
+4     
+5     from pydantic import BaseModel, field_validator
+6     
+7     
+8     # ── Existing schemas (unchanged) ──────────────────────────────────────────────
+9     
+10    class TypesRatio(BaseModel):
+11        MCQ: float = 0.6
+12        MSQ: float = 0.2
+13        NAT: float = 0.2
+14    
+15        @field_validator("MCQ", "MSQ", "NAT")
+16        @classmethod
+17        def validate_ratio(cls, v: float) -> float:
+18            if v < 0 or v > 1:
+19                raise ValueError("Ratio values must be between 0 and 1")
+20            return v
+21    
+22    
+23    class ExamGenerateRequest(BaseModel):
+24        paper: str
+25        scope: str  # 'full' or 'topic'
+26        selected_topics: Optional[list[str]] = None
+27        difficulty: str  # 'easy', 'medium', 'hard', 'auto'
+28        types_ratio: TypesRatio = TypesRatio()
+29    
+30        @field_validator("paper")
+31        @classmethod
+32        def validate_paper(cls, v: str) -> str:
+33            v = v.upper()
+34            if v not in ("CS", "DA"):
+35                raise ValueError("paper must be 'CS' or 'DA'")
+36            return v
+37    
+38        @field_validator("scope")
+39        @classmethod
+40        def validate_scope(cls, v: str) -> str:
+41            v = v.lower()
+42            if v not in ("full", "topic"):
+43                raise ValueError("scope must be 'full' or 'topic'")
+44            return v
+45    
+46        @field_validator("difficulty")
+47        @classmethod
+48        def validate_difficulty(cls, v: str) -> str:
+49            v = v.lower()
+50            if v not in ("easy", "medium", "hard", "auto"):
+51                raise ValueError("difficulty must be 'easy', 'medium', 'hard', or 'auto'")
+52            return v
+53    
+54        @field_validator("selected_topics")
+55        @classmethod
+56        def validate_selected_topics(cls, v: Optional[list[str]], info) -> Optional[list[str]]:
+57            return v
+58    
+59    
+60    class ExamGenerateResponse(BaseModel):
+61        exam_id: UUID
+62        status: str
+63        message: str
+64    
+65    
+66    class ExamSummary(BaseModel):
+67        id: UUID
+68        paper: str
+69        scope: str
+70        selected_topics: Optional[list[str]] = None
+71        difficulty: str
+72        total_questions: int
+73        total_marks: int
+74        duration_minutes: int
+75        status: str
+76        created_at: datetime
+77    
+78        class Config:
+79            from_attributes = True
+80    
+81    
+82    # ── Part 8: Exam screen schemas ───────────────────────────────────────────────
+83    
+84    class QuestionItem(BaseModel):
+85        """
+86        Single question for the exam screen.
+87        CRITICAL: Does NOT contain the answer field.
+88        """
+89        id: str
+90        qno: int
+91        question_type: str          # 'MCQ', 'MSQ', 'NAT'
+92        marks: int                  # 1 or 2
+93        section: str                # 'GA' or 'Subject'
+94        section_name: str           # e.g. 'General Aptitude', 'Linear Algebra'
+95        topic: str
+96        stem_tex: str               # Question text with LaTeX math
+97        code_snippet: Optional[str] = None
+98        code_language: Optional[str] = None
+99        choices: Optional[list[str]] = None   # 4 choices for MCQ/MSQ, null for NAT
+100       estimated_time_seconds: Optional[int] = None
+101   
+102   
+103   class ExamScreenResponse(BaseModel):
+104       """Full exam data returned for the exam screen."""
+105       exam_id: str
+106       paper: str
+107       difficulty: str
+108       total_questions: int
+109       total_marks: int
+110       duration_minutes: int
+111       questions: list[QuestionItem]   # Ordered by qno, NO answers
+112   
+113   
+114   class AttemptStartResponse(BaseModel):
+115       """
+116       Response from POST /exams/{id}/start.
+117       Returns attempt ID, server start time, and any saved responses for resume.
+118       """
+119       attempt_id: str
+120       exam_id: str
+121       start_time: str         # ISO 8601 datetime string
+122       remaining_seconds: int  # Seconds left in the exam
+123       responses: dict         # Previously saved responses (for resume)
+124       question_statuses: dict # Previously saved statuses (for resume)
+125       submitted: bool         # True if already submitted (should not reach exam screen)
+126       is_resume: bool = False # True if resuming an existing attempt
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\exam.py
+*Saved at: 3/24/2026, 10:00:01 AM*
+
+**[REMOVED]**
+```
+(from line ~1)
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+
+from pydantic import BaseModel, field_validator
+
+
+# ── Existing schemas (unchanged) ──────────────────────────────────────────────
+
+class TypesRatio(BaseModel):
+    MCQ: float = 0.6
+    MSQ: float = 0.2
+    NAT: float = 0.2
+
+    @field_validator("MCQ", "MSQ", "NAT")
+    @classmethod
+    def validate_ratio(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("Ratio values must be between 0 and 1")
+        return v
+
+
+class ExamGenerateRequest(BaseModel):
+    paper: str
+    scope: str  # 'full' or 'topic'
+    selected_topics: Optional[list[str]] = None
+    difficulty: str  # 'easy', 'medium', 'hard', 'auto'
+    types_ratio: TypesRatio = TypesRatio()
+
+    @field_validator("paper")
+    @classmethod
+    def validate_paper(cls, v: str) -> str:
+        v = v.upper()
+        if v not in ("CS", "DA"):
+            raise ValueError("paper must be 'CS' or 'DA'")
+        return v
+
+    @field_validator("scope")
+    @classmethod
+    def validate_scope(cls, v: str) -> str:
+        v = v.lower()
+        if v not in ("full", "topic"):
+            raise ValueError("scope must be 'full' or 'topic'")
+        return v
+
+    @field_validator("difficulty")
+    @classmethod
+    def validate_difficulty(cls, v: str) -> str:
+        v = v.lower()
+        if v not in ("easy", "medium", "hard", "auto"):
+            raise ValueError("difficulty must be 'easy', 'medium', 'hard', or 'auto'")
+        return v
+
+    @field_validator("selected_topics")
+    @classmethod
+    def validate_selected_topics(cls, v: Optional[list[str]], info) -> Optional[list[str]]:
+        return v
+
+
+class ExamGenerateResponse(BaseModel):
+    exam_id: UUID
+    status: str
+    message: str
+
+
+class ExamSummary(BaseModel):
+    id: UUID
+    paper: str
+    scope: str
+    selected_topics: Optional[list[str]] = None
+    difficulty: str
+    total_questions: int
+    total_marks: int
+    duration_minutes: int
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Part 8: Exam screen schemas ───────────────────────────────────────────────
+
+class QuestionItem(BaseModel):
+    """
+    Single question for the exam screen.
+    CRITICAL: Does NOT contain the answer field.
+    """
+    id: str
+    qno: int
+    question_type: str          # 'MCQ', 'MSQ', 'NAT'
+    marks: int                  # 1 or 2
+    section: str                # 'GA' or 'Subject'
+    section_name: str           # e.g. 'General Aptitude', 'Linear Algebra'
+    topic: str
+    stem_tex: str               # Question text with LaTeX math
+    code_snippet: Optional[str] = None
+    code_language: Optional[str] = None
+    choices: Optional[list[str]] = None   # 4 choices for MCQ/MSQ, null for NAT
+    estimated_time_seconds: Optional[int] = None
+
+
+class ExamScreenResponse(BaseModel):
+    """Full exam data returned for the exam screen."""
+    exam_id: str
+    paper: str
+    difficulty: str
+    total_questions: int
+    total_marks: int
+    duration_minutes: int
+    questions: list[QuestionItem]   # Ordered by qno, NO answers
+
+
+class AttemptStartResponse(BaseModel):
+    """
+    Response from POST /exams/{id}/start.
+    Returns attempt ID, server start time, and any saved responses for resume.
+    """
+    attempt_id: str
+    exam_id: str
+    start_time: str         # ISO 8601 datetime string
+    remaining_seconds: int  # Seconds left in the exam
+    responses: dict         # Previously saved responses (for resume)
+    question_statuses: dict # Previously saved statuses (for resume)
+    submitted: bool         # True if already submitted (should not reach exam screen)
+    is_resume: bool = False # True if resuming an existing attempt
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\exam.py
+*Saved at: 3/24/2026, 9:59:46 AM*
+
+**[REMOVED]**
+```
+(from line ~1)
+import uuid
+
+```
+**[ADDED]**
+```
+1     from datetime import datetime
+2     from typing import Optional
+3     from uuid import UUID
+```
+**[REMOVED]**
+```
+(from line ~5)
+from sqlalchemy import String, Integer, JSON, Boolean, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, TIMESTAMP
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import func
+
+```
+**[ADDED]**
+```
+5     from pydantic import BaseModel, field_validator
+```
+**[REMOVED]**
+```
+(from line ~7)
+from app.core.database import Base
+
+```
+**[ADDED]**
+```
+8     # ── Existing schemas (unchanged) ──────────────────────────────────────────────
+```
+**[REMOVED]**
+```
+(from line ~10)
+class Exam(Base):
+    __tablename__ = "exams"
+
+```
+**[ADDED]**
+```
+10    class TypesRatio(BaseModel):
+11        MCQ: float = 0.6
+12        MSQ: float = 0.2
+13        NAT: float = 0.2
+```
+**[REMOVED]**
+```
+(from line ~15)
+    id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    paper: Mapped[str] = mapped_column(String(10), nullable=False)
+    scope: Mapped[str] = mapped_column(String(20), nullable=False)
+    selected_topics: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
+    use_pyq_reference: Mapped[bool] = mapped_column(Boolean, default=True)
+    types_ratio: Mapped[dict] = mapped_column(
+        JSON, default={"MCQ": 0.6, "MSQ": 0.2, "NAT": 0.2}
+    )
+    total_questions: Mapped[int] = mapped_column(Integer, default=65)
+    total_marks: Mapped[int] = mapped_column(Integer, default=100)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=180)
+    question_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+    question_order: Mapped[list] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="generated")
+    generation_progress: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[str] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now()
+    )
+```
+**[ADDED]**
+```
+15        @field_validator("MCQ", "MSQ", "NAT")
+16        @classmethod
+17        def validate_ratio(cls, v: float) -> float:
+18            if v < 0 or v > 1:
+19                raise ValueError("Ratio values must be between 0 and 1")
+20            return v
+21    
+22    
+23    class ExamGenerateRequest(BaseModel):
+24        paper: str
+25        scope: str  # 'full' or 'topic'
+26        selected_topics: Optional[list[str]] = None
+27        difficulty: str  # 'easy', 'medium', 'hard', 'auto'
+28        types_ratio: TypesRatio = TypesRatio()
+29    
+30        @field_validator("paper")
+31        @classmethod
+32        def validate_paper(cls, v: str) -> str:
+33            v = v.upper()
+34            if v not in ("CS", "DA"):
+35                raise ValueError("paper must be 'CS' or 'DA'")
+36            return v
+37    
+38        @field_validator("scope")
+39        @classmethod
+40        def validate_scope(cls, v: str) -> str:
+41            v = v.lower()
+42            if v not in ("full", "topic"):
+43                raise ValueError("scope must be 'full' or 'topic'")
+44            return v
+45    
+46        @field_validator("difficulty")
+47        @classmethod
+48        def validate_difficulty(cls, v: str) -> str:
+49            v = v.lower()
+50            if v not in ("easy", "medium", "hard", "auto"):
+51                raise ValueError("difficulty must be 'easy', 'medium', 'hard', or 'auto'")
+52            return v
+53    
+54        @field_validator("selected_topics")
+55        @classmethod
+56        def validate_selected_topics(cls, v: Optional[list[str]], info) -> Optional[list[str]]:
+57            return v
+58    
+59    
+60    class ExamGenerateResponse(BaseModel):
+61        exam_id: UUID
+62        status: str
+63        message: str
+64    
+65    
+66    class ExamSummary(BaseModel):
+67        id: UUID
+68        paper: str
+69        scope: str
+70        selected_topics: Optional[list[str]] = None
+71        difficulty: str
+72        total_questions: int
+73        total_marks: int
+74        duration_minutes: int
+75        status: str
+76        created_at: datetime
+77    
+78        class Config:
+79            from_attributes = True
+80    
+81    
+82    # ── Part 8: Exam screen schemas ───────────────────────────────────────────────
+83    
+84    class QuestionItem(BaseModel):
+85        """
+86        Single question for the exam screen.
+87        CRITICAL: Does NOT contain the answer field.
+88        """
+89        id: str
+90        qno: int
+91        question_type: str          # 'MCQ', 'MSQ', 'NAT'
+92        marks: int                  # 1 or 2
+93        section: str                # 'GA' or 'Subject'
+94        section_name: str           # e.g. 'General Aptitude', 'Linear Algebra'
+95        topic: str
+96        stem_tex: str               # Question text with LaTeX math
+97        code_snippet: Optional[str] = None
+98        code_language: Optional[str] = None
+99        choices: Optional[list[str]] = None   # 4 choices for MCQ/MSQ, null for NAT
+100       estimated_time_seconds: Optional[int] = None
+101   
+102   
+103   class ExamScreenResponse(BaseModel):
+104       """Full exam data returned for the exam screen."""
+105       exam_id: str
+106       paper: str
+107       difficulty: str
+108       total_questions: int
+109       total_marks: int
+110       duration_minutes: int
+111       questions: list[QuestionItem]   # Ordered by qno, NO answers
+112   
+113   
+114   class AttemptStartResponse(BaseModel):
+115       """
+116       Response from POST /exams/{id}/start.
+117       Returns attempt ID, server start time, and any saved responses for resume.
+118       """
+119       attempt_id: str
+120       exam_id: str
+121       start_time: str         # ISO 8601 datetime string
+122       remaining_seconds: int  # Seconds left in the exam
+123       responses: dict         # Previously saved responses (for resume)
+124       question_statuses: dict # Previously saved statuses (for resume)
+125       submitted: bool         # True if already submitted (should not reach exam screen)
+126       is_resume: bool = False # True if resuming an existing attempt
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\exam.py
+*Saved at: 3/24/2026, 9:59:40 AM*
+
+**[REMOVED]**
+```
+(from line ~1)
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+
+```
+**[ADDED]**
+```
+1     import uuid
+```
+**[REMOVED]**
+```
+(from line ~3)
+from pydantic import BaseModel, field_validator
+
+```
+**[ADDED]**
+```
+3     from sqlalchemy import String, Integer, JSON, Boolean, ForeignKey
+4     from sqlalchemy.dialects.postgresql import UUID as PG_UUID, TIMESTAMP
+5     from sqlalchemy.orm import Mapped, mapped_column
+6     from sqlalchemy import func
+```
+**[ADDED]**
+```
+8     from app.core.database import Base
+```
+**[REMOVED]**
+```
+(from line ~10)
+# ── Existing schemas (unchanged) ──────────────────────────────────────────────
+
+```
+**[REMOVED]**
+```
+(from line ~11)
+class TypesRatio(BaseModel):
+    MCQ: float = 0.6
+    MSQ: float = 0.2
+    NAT: float = 0.2
+
+```
+**[ADDED]**
+```
+11    class Exam(Base):
+12        __tablename__ = "exams"
+```
+**[REMOVED]**
+```
+(from line ~14)
+    @field_validator("MCQ", "MSQ", "NAT")
+    @classmethod
+    def validate_ratio(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("Ratio values must be between 0 and 1")
+        return v
+
+
+class ExamGenerateRequest(BaseModel):
+    paper: str
+    scope: str  # 'full' or 'topic'
+    selected_topics: Optional[list[str]] = None
+    difficulty: str  # 'easy', 'medium', 'hard', 'auto'
+    types_ratio: TypesRatio = TypesRatio()
+
+    @field_validator("paper")
+    @classmethod
+    def validate_paper(cls, v: str) -> str:
+        v = v.upper()
+        if v not in ("CS", "DA"):
+            raise ValueError("paper must be 'CS' or 'DA'")
+        return v
+
+    @field_validator("scope")
+    @classmethod
+    def validate_scope(cls, v: str) -> str:
+        v = v.lower()
+        if v not in ("full", "topic"):
+            raise ValueError("scope must be 'full' or 'topic'")
+        return v
+
+    @field_validator("difficulty")
+    @classmethod
+    def validate_difficulty(cls, v: str) -> str:
+        v = v.lower()
+        if v not in ("easy", "medium", "hard", "auto"):
+            raise ValueError("difficulty must be 'easy', 'medium', 'hard', or 'auto'")
+        return v
+
+    @field_validator("selected_topics")
+    @classmethod
+    def validate_selected_topics(cls, v: Optional[list[str]], info) -> Optional[list[str]]:
+        return v
+
+
+class ExamGenerateResponse(BaseModel):
+    exam_id: UUID
+    status: str
+    message: str
+
+
+class ExamSummary(BaseModel):
+    id: UUID
+    paper: str
+    scope: str
+    selected_topics: Optional[list[str]] = None
+    difficulty: str
+    total_questions: int
+    total_marks: int
+    duration_minutes: int
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Part 8: Exam screen schemas ───────────────────────────────────────────────
+
+class QuestionItem(BaseModel):
+    """
+    Single question for the exam screen.
+    CRITICAL: Does NOT contain the answer field.
+    """
+    id: str
+    qno: int
+    question_type: str          # 'MCQ', 'MSQ', 'NAT'
+    marks: int                  # 1 or 2
+    section: str                # 'GA' or 'Subject'
+    section_name: str           # e.g. 'General Aptitude', 'Linear Algebra'
+    topic: str
+    stem_tex: str               # Question text with LaTeX math
+    code_snippet: Optional[str] = None
+    code_language: Optional[str] = None
+    choices: Optional[list[str]] = None   # 4 choices for MCQ/MSQ, null for NAT
+    estimated_time_seconds: Optional[int] = None
+
+
+class ExamScreenResponse(BaseModel):
+    """Full exam data returned for the exam screen."""
+    exam_id: str
+    paper: str
+    difficulty: str
+    total_questions: int
+    total_marks: int
+    duration_minutes: int
+    questions: list[QuestionItem]   # Ordered by qno, NO answers
+
+
+class AttemptStartResponse(BaseModel):
+    """
+    Response from POST /exams/{id}/start.
+    Returns attempt ID, server start time, and any saved responses for resume.
+    """
+    attempt_id: str
+    exam_id: str
+    start_time: str         # ISO 8601 datetime string
+    remaining_seconds: int  # Seconds left in the exam
+    responses: dict         # Previously saved responses (for resume)
+    question_statuses: dict # Previously saved statuses (for resume)
+    submitted: bool         # True if already submitted (should not reach exam screen)
+    is_resume: bool = False # True if resuming an existing attempt
+```
+**[ADDED]**
+```
+14        id: Mapped[uuid.UUID] = mapped_column(
+15            PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+16        )
+17        user_id: Mapped[uuid.UUID] = mapped_column(
+18            PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+19        )
+20        paper: Mapped[str] = mapped_column(String(10), nullable=False)
+21        scope: Mapped[str] = mapped_column(String(20), nullable=False)
+22        selected_topics: Mapped[list | None] = mapped_column(JSON, nullable=True)
+23        difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
+24        use_pyq_reference: Mapped[bool] = mapped_column(Boolean, default=True)
+25        types_ratio: Mapped[dict] = mapped_column(
+26            JSON, default={"MCQ": 0.6, "MSQ": 0.2, "NAT": 0.2}
+27        )
+28        total_questions: Mapped[int] = mapped_column(Integer, default=65)
+29        total_marks: Mapped[int] = mapped_column(Integer, default=100)
+30        duration_minutes: Mapped[int] = mapped_column(Integer, default=180)
+31        question_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+32        question_order: Mapped[list] = mapped_column(JSON, nullable=False)
+33        status: Mapped[str] = mapped_column(String(20), default="generated")
+34        generation_progress: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+35        created_at: Mapped[str] = mapped_column(
+36            TIMESTAMP(timezone=True), server_default=func.now()
+37        )
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\exam.py
+*Saved at: 3/24/2026, 9:58:57 AM*
+
+**[REMOVED]**
+```
+(from line ~1)
+import uuid
+
+```
+**[ADDED]**
+```
+1     from datetime import datetime
+2     from typing import Optional
+3     from uuid import UUID
+```
+**[REMOVED]**
+```
+(from line ~5)
+from sqlalchemy import String, Integer, JSON, Boolean, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, TIMESTAMP
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import func
+
+```
+**[ADDED]**
+```
+5     from pydantic import BaseModel, field_validator
+```
+**[REMOVED]**
+```
+(from line ~7)
+from app.core.database import Base
+
+```
+**[ADDED]**
+```
+8     # ── Existing schemas (unchanged) ──────────────────────────────────────────────
+```
+**[REMOVED]**
+```
+(from line ~10)
+class Exam(Base):
+    __tablename__ = "exams"
+
+```
+**[ADDED]**
+```
+10    class TypesRatio(BaseModel):
+11        MCQ: float = 0.6
+12        MSQ: float = 0.2
+13        NAT: float = 0.2
+```
+**[REMOVED]**
+```
+(from line ~15)
+    id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    paper: Mapped[str] = mapped_column(String(10), nullable=False)
+    scope: Mapped[str] = mapped_column(String(20), nullable=False)
+    selected_topics: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
+    use_pyq_reference: Mapped[bool] = mapped_column(Boolean, default=True)
+    types_ratio: Mapped[dict] = mapped_column(
+        JSON, default={"MCQ": 0.6, "MSQ": 0.2, "NAT": 0.2}
+    )
+    total_questions: Mapped[int] = mapped_column(Integer, default=65)
+    total_marks: Mapped[int] = mapped_column(Integer, default=100)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=180)
+    question_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+    question_order: Mapped[list] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="generated")
+    generation_progress: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[str] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now()
+    )
+```
+**[ADDED]**
+```
+15        @field_validator("MCQ", "MSQ", "NAT")
+16        @classmethod
+17        def validate_ratio(cls, v: float) -> float:
+18            if v < 0 or v > 1:
+19                raise ValueError("Ratio values must be between 0 and 1")
+20            return v
+21    
+22    
+23    class ExamGenerateRequest(BaseModel):
+24        paper: str
+25        scope: str  # 'full' or 'topic'
+26        selected_topics: Optional[list[str]] = None
+27        difficulty: str  # 'easy', 'medium', 'hard', 'auto'
+28        types_ratio: TypesRatio = TypesRatio()
+29    
+30        @field_validator("paper")
+31        @classmethod
+32        def validate_paper(cls, v: str) -> str:
+33            v = v.upper()
+34            if v not in ("CS", "DA"):
+35                raise ValueError("paper must be 'CS' or 'DA'")
+36            return v
+37    
+38        @field_validator("scope")
+39        @classmethod
+40        def validate_scope(cls, v: str) -> str:
+41            v = v.lower()
+42            if v not in ("full", "topic"):
+43                raise ValueError("scope must be 'full' or 'topic'")
+44            return v
+45    
+46        @field_validator("difficulty")
+47        @classmethod
+48        def validate_difficulty(cls, v: str) -> str:
+49            v = v.lower()
+50            if v not in ("easy", "medium", "hard", "auto"):
+51                raise ValueError("difficulty must be 'easy', 'medium', 'hard', or 'auto'")
+52            return v
+53    
+54        @field_validator("selected_topics")
+55        @classmethod
+56        def validate_selected_topics(cls, v: Optional[list[str]], info) -> Optional[list[str]]:
+57            return v
+58    
+59    
+60    class ExamGenerateResponse(BaseModel):
+61        exam_id: UUID
+62        status: str
+63        message: str
+64    
+65    
+66    class ExamSummary(BaseModel):
+67        id: UUID
+68        paper: str
+69        scope: str
+70        selected_topics: Optional[list[str]] = None
+71        difficulty: str
+72        total_questions: int
+73        total_marks: int
+74        duration_minutes: int
+75        status: str
+76        created_at: datetime
+77    
+78        class Config:
+79            from_attributes = True
+80    
+81    
+82    # ── Part 8: Exam screen schemas ───────────────────────────────────────────────
+83    
+84    class QuestionItem(BaseModel):
+85        """
+86        Single question for the exam screen.
+87        CRITICAL: Does NOT contain the answer field.
+88        """
+89        id: str
+90        qno: int
+91        question_type: str          # 'MCQ', 'MSQ', 'NAT'
+92        marks: int                  # 1 or 2
+93        section: str                # 'GA' or 'Subject'
+94        section_name: str           # e.g. 'General Aptitude', 'Linear Algebra'
+95        topic: str
+96        stem_tex: str               # Question text with LaTeX math
+97        code_snippet: Optional[str] = None
+98        code_language: Optional[str] = None
+99        choices: Optional[list[str]] = None   # 4 choices for MCQ/MSQ, null for NAT
+100       estimated_time_seconds: Optional[int] = None
+101   
+102   
+103   class ExamScreenResponse(BaseModel):
+104       """Full exam data returned for the exam screen."""
+105       exam_id: str
+106       paper: str
+107       difficulty: str
+108       total_questions: int
+109       total_marks: int
+110       duration_minutes: int
+111       questions: list[QuestionItem]   # Ordered by qno, NO answers
+112   
+113   
+114   class AttemptStartResponse(BaseModel):
+115       """
+116       Response from POST /exams/{id}/start.
+117       Returns attempt ID, server start time, and any saved responses for resume.
+118       """
+119       attempt_id: str
+120       exam_id: str
+121       start_time: str         # ISO 8601 datetime string
+122       remaining_seconds: int  # Seconds left in the exam
+123       responses: dict         # Previously saved responses (for resume)
+124       question_statuses: dict # Previously saved statuses (for resume)
+125       submitted: bool         # True if already submitted (should not reach exam screen)
+126       is_resume: bool = False # True if resuming an existing attempt
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\exam.py
+*Saved at: 3/24/2026, 9:58:49 AM*
+
+**[REMOVED]**
+```
+(from line ~1)
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+
+```
+**[ADDED]**
+```
+1     import uuid
+```
+**[REMOVED]**
+```
+(from line ~3)
+from pydantic import BaseModel, field_validator
+
+```
+**[ADDED]**
+```
+3     from sqlalchemy import String, Integer, JSON, Boolean, ForeignKey
+4     from sqlalchemy.dialects.postgresql import UUID as PG_UUID, TIMESTAMP
+5     from sqlalchemy.orm import Mapped, mapped_column
+6     from sqlalchemy import func
+```
+**[ADDED]**
+```
+8     from app.core.database import Base
+```
+**[REMOVED]**
+```
+(from line ~10)
+# ── Existing schemas (unchanged) ──────────────────────────────────────────────
+
+```
+**[REMOVED]**
+```
+(from line ~11)
+class TypesRatio(BaseModel):
+    MCQ: float = 0.6
+    MSQ: float = 0.2
+    NAT: float = 0.2
+
+```
+**[ADDED]**
+```
+11    class Exam(Base):
+12        __tablename__ = "exams"
+```
+**[REMOVED]**
+```
+(from line ~14)
+    @field_validator("MCQ", "MSQ", "NAT")
+    @classmethod
+    def validate_ratio(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("Ratio values must be between 0 and 1")
+        return v
+
+
+class ExamGenerateRequest(BaseModel):
+    paper: str
+    scope: str  # 'full' or 'topic'
+    selected_topics: Optional[list[str]] = None
+    difficulty: str  # 'easy', 'medium', 'hard', 'auto'
+    types_ratio: TypesRatio = TypesRatio()
+
+    @field_validator("paper")
+    @classmethod
+    def validate_paper(cls, v: str) -> str:
+        v = v.upper()
+        if v not in ("CS", "DA"):
+            raise ValueError("paper must be 'CS' or 'DA'")
+        return v
+
+    @field_validator("scope")
+    @classmethod
+    def validate_scope(cls, v: str) -> str:
+        v = v.lower()
+        if v not in ("full", "topic"):
+            raise ValueError("scope must be 'full' or 'topic'")
+        return v
+
+    @field_validator("difficulty")
+    @classmethod
+    def validate_difficulty(cls, v: str) -> str:
+        v = v.lower()
+        if v not in ("easy", "medium", "hard", "auto"):
+            raise ValueError("difficulty must be 'easy', 'medium', 'hard', or 'auto'")
+        return v
+
+    @field_validator("selected_topics")
+    @classmethod
+    def validate_selected_topics(cls, v: Optional[list[str]], info) -> Optional[list[str]]:
+        return v
+
+
+class ExamGenerateResponse(BaseModel):
+    exam_id: UUID
+    status: str
+    message: str
+
+
+class ExamSummary(BaseModel):
+    id: UUID
+    paper: str
+    scope: str
+    selected_topics: Optional[list[str]] = None
+    difficulty: str
+    total_questions: int
+    total_marks: int
+    duration_minutes: int
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Part 8: Exam screen schemas ───────────────────────────────────────────────
+
+class QuestionItem(BaseModel):
+    """
+    Single question for the exam screen.
+    CRITICAL: Does NOT contain the answer field.
+    """
+    id: str
+    qno: int
+    question_type: str          # 'MCQ', 'MSQ', 'NAT'
+    marks: int                  # 1 or 2
+    section: str                # 'GA' or 'Subject'
+    section_name: str           # e.g. 'General Aptitude', 'Linear Algebra'
+    topic: str
+    stem_tex: str               # Question text with LaTeX math
+    code_snippet: Optional[str] = None
+    code_language: Optional[str] = None
+    choices: Optional[list[str]] = None   # 4 choices for MCQ/MSQ, null for NAT
+    estimated_time_seconds: Optional[int] = None
+
+
+class ExamScreenResponse(BaseModel):
+    """Full exam data returned for the exam screen."""
+    exam_id: str
+    paper: str
+    difficulty: str
+    total_questions: int
+    total_marks: int
+    duration_minutes: int
+    questions: list[QuestionItem]   # Ordered by qno, NO answers
+
+
+class AttemptStartResponse(BaseModel):
+    """
+    Response from POST /exams/{id}/start.
+    Returns attempt ID, server start time, and any saved responses for resume.
+    """
+    attempt_id: str
+    exam_id: str
+    start_time: str         # ISO 8601 datetime string
+    remaining_seconds: int  # Seconds left in the exam
+    responses: dict         # Previously saved responses (for resume)
+    question_statuses: dict # Previously saved statuses (for resume)
+    submitted: bool         # True if already submitted (should not reach exam screen)
+    is_resume: bool = False # True if resuming an existing attempt
+```
+**[ADDED]**
+```
+14        id: Mapped[uuid.UUID] = mapped_column(
+15            PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+16        )
+17        user_id: Mapped[uuid.UUID] = mapped_column(
+18            PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+19        )
+20        paper: Mapped[str] = mapped_column(String(10), nullable=False)
+21        scope: Mapped[str] = mapped_column(String(20), nullable=False)
+22        selected_topics: Mapped[list | None] = mapped_column(JSON, nullable=True)
+23        difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
+24        use_pyq_reference: Mapped[bool] = mapped_column(Boolean, default=True)
+25        types_ratio: Mapped[dict] = mapped_column(
+26            JSON, default={"MCQ": 0.6, "MSQ": 0.2, "NAT": 0.2}
+27        )
+28        total_questions: Mapped[int] = mapped_column(Integer, default=65)
+29        total_marks: Mapped[int] = mapped_column(Integer, default=100)
+30        duration_minutes: Mapped[int] = mapped_column(Integer, default=180)
+31        question_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+32        question_order: Mapped[list] = mapped_column(JSON, nullable=False)
+33        status: Mapped[str] = mapped_column(String(20), default="generated")
+34        generation_progress: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+35        created_at: Mapped[str] = mapped_column(
+36            TIMESTAMP(timezone=True), server_default=func.now()
+37        )
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\__init__.py
+*Saved at: 3/24/2026, 9:57:35 AM*
+
+**[REMOVED]**
+```
+(from line ~6)
+from app.models.exam import Exam
+
+```
+**[ADDED]**
+```
+6     from app.models.exam import exam
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\package.json
+*Saved at: 3/24/2026, 9:53:46 AM*
+
+**[REMOVED]**
+```
+(from line ~31)
+    "vite": "^8.0.0"
+
+```
+**[ADDED]**
+```
+31        "vite": "^7.3.0"
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\package.json
+*Saved at: 3/24/2026, 9:50:51 AM*
+
+**[REMOVED]**
+```
+(from line ~22)
+        "@types/katex": "^0.16.7",
+
+```
+**[ADDED]**
+```
+22        "@types/katex": "^0.16.7",
+```
+**[REMOVED]**
+```
+(from line ~24)
+
+
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\package.json
+*Saved at: 3/24/2026, 9:50:48 AM*
+
+**[REMOVED]**
+```
+(from line ~22)
+    
+
+```
+**[ADDED]**
+```
+22            "@types/katex": "^0.16.7",
+23        "@types/prismjs": "^1.26.4",
+24    
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\package.json
+*Saved at: 3/24/2026, 9:50:47 AM*
+
+**[ADDED]**
+```
+22        
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\package.json
+*Saved at: 3/24/2026, 9:50:35 AM*
+
+**[REMOVED]**
+```
+(from line ~14)
+        "katex": "^0.16.11",
+
+```
+**[ADDED]**
+```
+14        "katex": "^0.16.11",
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\package.json
+*Saved at: 3/24/2026, 9:50:33 AM*
+
+**[REMOVED]**
+```
+(from line ~16)
+
+
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\package.json
+*Saved at: 3/24/2026, 9:50:31 AM*
+
+**[ADDED]**
+```
+14            "katex": "^0.16.11",
+15        "prismjs": "^1.29.0",
+16    
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\src\App.tsx
+*Saved at: 3/24/2026, 9:49:34 AM*
+
+**[ADDED]**
+```
+14    import ExamScreen from "./pages/ExamScreen";
+```
+**[ADDED]**
+```
+61              {/* Part 8: Exam Screen */}
+```
+**[ADDED]**
+```
+63                path="/exam/:examId"
+64                element={
+65                  <ProtectedRoute>
+66                    <ExamScreen />
+67                  </ProtectedRoute>
+68                }
+69              />
+70              <Route
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\src\types\index.ts
+*Saved at: 3/24/2026, 9:49:25 AM*
+
+**[ADDED]**
+```
+69    /* ── Exam Screen (Part 8) ── */
+70    
+71    export type QuestionType = "MCQ" | "MSQ" | "NAT";
+72    export type QuestionSection = "GA" | "Subject";
+73    
+74    /** Status of a question in the palette */
+75    export type QuestionStatus =
+76      | "not_visited"      // gray  — never opened
+77      | "not_answered"     // red   — visited but no answer
+78      | "answered"         // green — has an answer
+79      | "marked"           // purple — marked for review, no answer
+80      | "answered_marked"; // blue  — answered AND marked for review
+81    
+82    /** Single question item returned by GET /exams/{id} — NO answer field */
+83    export interface QuestionItem {
+84      id: string;
+85      qno: number;
+86      question_type: QuestionType;
+87      marks: number;
+88      section: QuestionSection;
+89      section_name: string;
+90      topic: string;
+91      stem_tex: string;
+92      code_snippet: string | null;
+93      code_language: string | null;
+94      choices: string[] | null;
+95      estimated_time_seconds: number | null;
+96    }
+97    
+98    /** Full exam data returned by GET /exams/{id} */
+99    export interface ExamScreenData {
+100     exam_id: string;
+101     paper: string;
+102     difficulty: string;
+103     total_questions: number;
+104     total_marks: number;
+105     duration_minutes: number;
+106     questions: QuestionItem[];
+107   }
+108   
+109   /** Response from POST /exams/{id}/start */
+110   export interface AttemptData {
+111     attempt_id: string;
+112     exam_id: string;
+113     start_time: string;       // ISO 8601
+114     remaining_seconds: number;
+115     responses: Record<string, MCQAnswer | MSQAnswer | NATAnswer>;
+116     question_statuses: Record<string, QuestionStatus>;
+117     submitted: boolean;
+118     is_resume: boolean;
+119   }
+120   
+121   /** Answer types */
+122   export interface MCQAnswer {
+123     index: number;
+124   }
+125   export interface MSQAnswer {
+126     indices: number[];
+127   }
+128   export interface NATAnswer {
+129     value: string; // stored as string, parsed on submission
+130   }
+131   
+132   export type AnyAnswer = MCQAnswer | MSQAnswer | NATAnswer;
+133   
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\attempt.py
+*Saved at: 3/24/2026, 9:48:51 AM*
+
+**[ADDED]**
+```
+2     from datetime import datetime
+```
+**[REMOVED]**
+```
+(from line ~4)
+from sqlalchemy import String, Float, Integer, JSON, ForeignKey, Boolean
+
+```
+**[ADDED]**
+```
+4     from sqlalchemy import String, Float, Integer, JSON, ForeignKey, Boolean, func
+```
+**[REMOVED]**
+```
+(from line ~18)
+        PG_UUID(as_uuid=True), ForeignKey("exams.id", ondelete="CASCADE"), nullable=False, index=True
+
+```
+**[ADDED]**
+```
+18            PG_UUID(as_uuid=True),
+19            ForeignKey("exams.id", ondelete="CASCADE"),
+20            nullable=False,
+21            index=True,
+```
+**[REMOVED]**
+```
+(from line ~24)
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+
+```
+**[ADDED]**
+```
+24            PG_UUID(as_uuid=True),
+25            ForeignKey("users.id", ondelete="CASCADE"),
+26            nullable=False,
+27            index=True,
+```
+**[REMOVED]**
+```
+(from line ~29)
+    start_time: Mapped[str | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    end_time: Mapped[str | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+```
+**[ADDED]**
+```
+29        start_time: Mapped[datetime | None] = mapped_column(
+30            TIMESTAMP(timezone=True), nullable=True
+31        )
+32        end_time: Mapped[datetime | None] = mapped_column(
+33            TIMESTAMP(timezone=True), nullable=True
+34        )
+```
+**[REMOVED]**
+```
+(from line ~46)
+    topic_analysis: Mapped[list | None] = mapped_column(JSON, nullable=True)
+```
+**[ADDED]**
+```
+46        topic_analysis: Mapped[list | None] = mapped_column(JSON, nullable=True)
+47        created_at: Mapped[datetime] = mapped_column(
+48            TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+49        )
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\models\exam.py
+*Saved at: 3/24/2026, 9:48:39 AM*
+
+**[REMOVED]**
+```
+(from line ~1)
+import uuid
+
+```
+**[ADDED]**
+```
+1     from datetime import datetime
+2     from typing import Optional
+3     from uuid import UUID
+```
+**[REMOVED]**
+```
+(from line ~5)
+from sqlalchemy import String, Integer, JSON, Boolean, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, TIMESTAMP
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import func
+
+```
+**[ADDED]**
+```
+5     from pydantic import BaseModel, field_validator
+```
+**[REMOVED]**
+```
+(from line ~7)
+from app.core.database import Base
+
+```
+**[ADDED]**
+```
+8     # ── Existing schemas (unchanged) ──────────────────────────────────────────────
+```
+**[REMOVED]**
+```
+(from line ~10)
+class Exam(Base):
+    __tablename__ = "exams"
+
+```
+**[ADDED]**
+```
+10    class TypesRatio(BaseModel):
+11        MCQ: float = 0.6
+12        MSQ: float = 0.2
+13        NAT: float = 0.2
+```
+**[REMOVED]**
+```
+(from line ~15)
+    id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    paper: Mapped[str] = mapped_column(String(10), nullable=False)
+    scope: Mapped[str] = mapped_column(String(20), nullable=False)
+    selected_topics: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
+    use_pyq_reference: Mapped[bool] = mapped_column(Boolean, default=True)
+    types_ratio: Mapped[dict] = mapped_column(
+        JSON, default={"MCQ": 0.6, "MSQ": 0.2, "NAT": 0.2}
+    )
+    total_questions: Mapped[int] = mapped_column(Integer, default=65)
+    total_marks: Mapped[int] = mapped_column(Integer, default=100)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=180)
+    question_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+    question_order: Mapped[list] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="generated")
+    generation_progress: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[str] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now()
+    )
+```
+**[ADDED]**
+```
+15        @field_validator("MCQ", "MSQ", "NAT")
+16        @classmethod
+17        def validate_ratio(cls, v: float) -> float:
+18            if v < 0 or v > 1:
+19                raise ValueError("Ratio values must be between 0 and 1")
+20            return v
+21    
+22    
+23    class ExamGenerateRequest(BaseModel):
+24        paper: str
+25        scope: str  # 'full' or 'topic'
+26        selected_topics: Optional[list[str]] = None
+27        difficulty: str  # 'easy', 'medium', 'hard', 'auto'
+28        types_ratio: TypesRatio = TypesRatio()
+29    
+30        @field_validator("paper")
+31        @classmethod
+32        def validate_paper(cls, v: str) -> str:
+33            v = v.upper()
+34            if v not in ("CS", "DA"):
+35                raise ValueError("paper must be 'CS' or 'DA'")
+36            return v
+37    
+38        @field_validator("scope")
+39        @classmethod
+40        def validate_scope(cls, v: str) -> str:
+41            v = v.lower()
+42            if v not in ("full", "topic"):
+43                raise ValueError("scope must be 'full' or 'topic'")
+44            return v
+45    
+46        @field_validator("difficulty")
+47        @classmethod
+48        def validate_difficulty(cls, v: str) -> str:
+49            v = v.lower()
+50            if v not in ("easy", "medium", "hard", "auto"):
+51                raise ValueError("difficulty must be 'easy', 'medium', 'hard', or 'auto'")
+52            return v
+53    
+54        @field_validator("selected_topics")
+55        @classmethod
+56        def validate_selected_topics(cls, v: Optional[list[str]], info) -> Optional[list[str]]:
+57            return v
+58    
+59    
+60    class ExamGenerateResponse(BaseModel):
+61        exam_id: UUID
+62        status: str
+63        message: str
+64    
+65    
+66    class ExamSummary(BaseModel):
+67        id: UUID
+68        paper: str
+69        scope: str
+70        selected_topics: Optional[list[str]] = None
+71        difficulty: str
+72        total_questions: int
+73        total_marks: int
+74        duration_minutes: int
+75        status: str
+76        created_at: datetime
+77    
+78        class Config:
+79            from_attributes = True
+80    
+81    
+82    # ── Part 8: Exam screen schemas ───────────────────────────────────────────────
+83    
+84    class QuestionItem(BaseModel):
+85        """
+86        Single question for the exam screen.
+87        CRITICAL: Does NOT contain the answer field.
+88        """
+89        id: str
+90        qno: int
+91        question_type: str          # 'MCQ', 'MSQ', 'NAT'
+92        marks: int                  # 1 or 2
+93        section: str                # 'GA' or 'Subject'
+94        section_name: str           # e.g. 'General Aptitude', 'Linear Algebra'
+95        topic: str
+96        stem_tex: str               # Question text with LaTeX math
+97        code_snippet: Optional[str] = None
+98        code_language: Optional[str] = None
+99        choices: Optional[list[str]] = None   # 4 choices for MCQ/MSQ, null for NAT
+100       estimated_time_seconds: Optional[int] = None
+101   
+102   
+103   class ExamScreenResponse(BaseModel):
+104       """Full exam data returned for the exam screen."""
+105       exam_id: str
+106       paper: str
+107       difficulty: str
+108       total_questions: int
+109       total_marks: int
+110       duration_minutes: int
+111       questions: list[QuestionItem]   # Ordered by qno, NO answers
+112   
+113   
+114   class AttemptStartResponse(BaseModel):
+115       """
+116       Response from POST /exams/{id}/start.
+117       Returns attempt ID, server start time, and any saved responses for resume.
+118       """
+119       attempt_id: str
+120       exam_id: str
+121       start_time: str         # ISO 8601 datetime string
+122       remaining_seconds: int  # Seconds left in the exam
+123       responses: dict         # Previously saved responses (for resume)
+124       question_statuses: dict # Previously saved statuses (for resume)
+125       submitted: bool         # True if already submitted (should not reach exam screen)
+126       is_resume: bool = False # True if resuming an existing attempt
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\api\exams.py
+*Saved at: 3/24/2026, 9:48:14 AM*
+
+**[REMOVED]**
+```
+(from line ~2)
+import uuid
+
+```
+**[ADDED]**
+```
+2     import uuid as uuid_module
+3     from datetime import datetime, timezone
+```
+**[ADDED]**
+```
+13    from app.models.attempt import Attempt
+```
+**[REMOVED]**
+```
+(from line ~15)
+from app.schemas.exam import ExamGenerateRequest, ExamGenerateResponse, ExamSummary
+
+```
+**[ADDED]**
+```
+15    from app.models.question_bank import QuestionBank
+16    from app.schemas.exam import (
+17        ExamGenerateRequest,
+18        ExamGenerateResponse,
+19        ExamSummary,
+20        ExamScreenResponse,
+21        QuestionItem,
+22        AttemptStartResponse,
+23    )
+```
+**[ADDED]**
+```
+29    # ── POST /exams/generate ──────────────────────────────────────────────────────
+30    
+```
+**[REMOVED]**
+```
+(from line ~42)
+    """
+    Validates the exam configuration, creates an exam row with
+    status 'generating', kicks off background generation, and returns exam_id.
+    """
+
+
+```
+**[REMOVED]**
+```
+(from line ~64)
+    # ── 3. If scope is 'topic', validate selected_topics ──
+
+```
+**[ADDED]**
+```
+64        # ── 3. Validate selected_topics if scope is 'topic' ──
+```
+**[REMOVED]**
+```
+(from line ~71)
+
+
+```
+**[REMOVED]**
+```
+(from line ~75)
+
+
+```
+**[REMOVED]**
+```
+(from line ~91)
+    exam_id = uuid.uuid4()
+
+
+```
+**[ADDED]**
+```
+91        exam_id = uuid_module.uuid4()
+```
+**[REMOVED]**
+```
+(from line ~113)
+
+
+```
+**[ADDED]**
+```
+126   # ── GET /exams ────────────────────────────────────────────────────────────────
+127   
+```
+**[REMOVED]**
+```
+(from line ~137)
+    """Returns all exams created by the current user, newest first."""
+
+```
+**[REMOVED]**
+```
+(from line ~143)
+
+
+```
+**[ADDED]**
+```
+160   # ── GET /exams/{exam_id}/status ───────────────────────────────────────────────
+161   
+```
+**[REMOVED]**
+```
+(from line ~167)
+    exam_id: uuid.UUID,
+
+```
+**[ADDED]**
+```
+167       exam_id: uuid_module.UUID,
+```
+**[REMOVED]**
+```
+(from line ~171)
+    """
+    Returns current generation status and progress.
+    Frontend polls this every 3 seconds during generation.
+    """
+
+```
+**[REMOVED]**
+```
+(from line ~175)
+
+
+```
+**[REMOVED]**
+```
+(from line ~176)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Exam not found.",
+        )
+
+```
+**[ADDED]**
+```
+176           raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found.")
+```
+**[REMOVED]**
+```
+(from line ~179)
+
+
+```
+**[ADDED]**
+```
+192   # ── POST /exams/{exam_id}/start ───────────────────────────────────────────────
+193   
+194   @router.post(
+195       "/{exam_id}/start",
+196       response_model=AttemptStartResponse,
+197       summary="Start or resume an exam attempt",
+198   )
+199   async def start_exam(
+200       exam_id: uuid_module.UUID,
+201       user: User = Depends(get_current_user),
+202       db: AsyncSession = Depends(get_db),
+203   ):
+204       """
+205       Creates a new attempt for the exam, or resumes an existing in-progress one.
+206       Records server-side start_time for the authoritative timer.
+207       Returns the attempt with any previously saved responses (for resume).
+208       """
+209       # ── 1. Get exam ──
+210       result = await db.execute(
+211           select(Exam).where(Exam.id == exam_id, Exam.user_id == user.id)
+212       )
+213       exam = result.scalar_one_or_none()
+214       if exam is None:
+215           raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found.")
+216   
+217       if exam.status == "generating":
+218           raise HTTPException(
+219               status_code=status.HTTP_400_BAD_REQUEST,
+220               detail="Exam is still being generated. Please wait.",
+221           )
+222       if exam.status == "failed":
+223           raise HTTPException(
+224               status_code=status.HTTP_400_BAD_REQUEST,
+225               detail="Exam generation failed. Please generate a new exam.",
+226           )
+227       if exam.status == "completed":
+228           raise HTTPException(
+229               status_code=status.HTTP_400_BAD_REQUEST,
+230               detail="This exam has already been completed.",
+231           )
+232       if exam.status not in ("generated", "in_progress"):
+233           raise HTTPException(
+234               status_code=status.HTTP_400_BAD_REQUEST,
+235               detail=f"Cannot start exam with status '{exam.status}'.",
+236           )
+237   
+238       now = datetime.now(timezone.utc)
+239       duration_seconds = exam.duration_minutes * 60
+240   
+241       # ── 2. Check for existing in-progress attempt (resume) ──
+242       existing_result = await db.execute(
+243           select(Attempt).where(
+244               Attempt.exam_id == exam_id,
+245               Attempt.user_id == user.id,
+246               Attempt.submitted == False,  # noqa: E712
+247           )
+248       )
+249       existing = existing_result.scalar_one_or_none()
+250   
+251       if existing is not None:
+252           # Resume existing attempt
+253           elapsed = (now - existing.start_time).total_seconds()
+254           remaining = max(0, duration_seconds - int(elapsed))
+255   
+256           if remaining <= 0:
+257               # Time has expired — auto-submit
+258               existing.submitted = True
+259               existing.auto_submitted = True
+260               existing.end_time = now
+261               exam.status = "completed"
+262               await db.commit()
+263               raise HTTPException(
+264                   status_code=status.HTTP_400_BAD_REQUEST,
+265                   detail="Exam time has expired. The attempt has been auto-submitted.",
+266               )
+267   
+268           return AttemptStartResponse(
+269               attempt_id=str(existing.id),
+270               exam_id=str(exam.id),
+271               start_time=existing.start_time.isoformat(),
+272               remaining_seconds=remaining,
+273               responses=existing.responses or {},
+274               question_statuses=existing.question_statuses or {},
+275               submitted=existing.submitted,
+276               is_resume=True,
+277           )
+278   
+279       # ── 3. Create new attempt ──
+280       attempt = Attempt(
+281           id=uuid_module.uuid4(),
+282           exam_id=exam.id,
+283           user_id=user.id,
+284           start_time=now,
+285           submitted=False,
+286           auto_submitted=False,
+287           responses={},
+288           question_statuses={},
+289           events_log=[],
+290           max_score=exam.total_marks,
+291       )
+292       db.add(attempt)
+293   
+294       # Update exam status to in_progress
+295       exam.status = "in_progress"
+296       await db.commit()
+297   
+298       return AttemptStartResponse(
+299           attempt_id=str(attempt.id),
+300           exam_id=str(exam.id),
+301           start_time=now.isoformat(),
+302           remaining_seconds=duration_seconds,
+303           responses={},
+304           question_statuses={},
+305           submitted=False,
+306           is_resume=False,
+307       )
+308   
+309   
+310   # ── GET /exams/{exam_id} ──────────────────────────────────────────────────────
+311   
+312   @router.get(
+313       "/{exam_id}",
+314       response_model=ExamScreenResponse,
+315       summary="Get exam questions for the exam screen (NO answers)",
+316   )
+317   async def get_exam(
+318       exam_id: uuid_module.UUID,
+319       user: User = Depends(get_current_user),
+320       db: AsyncSession = Depends(get_db),
+321   ):
+322       """
+323       Returns the exam with all questions in order, but WITHOUT correct answers.
+324       Used by the exam screen to render questions.
+325       """
+326       # ── 1. Get exam ──
+327       result = await db.execute(
+328           select(Exam).where(Exam.id == exam_id, Exam.user_id == user.id)
+329       )
+330       exam = result.scalar_one_or_none()
+331       if exam is None:
+332           raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found.")
+333   
+334       if exam.status == "generating":
+335           raise HTTPException(
+336               status_code=status.HTTP_400_BAD_REQUEST,
+337               detail="Exam is still being generated.",
+338           )
+339       if exam.status == "failed":
+340           raise HTTPException(
+341               status_code=status.HTTP_400_BAD_REQUEST,
+342               detail="Exam generation failed.",
+343           )
+344       if not exam.question_order:
+345           raise HTTPException(
+346               status_code=status.HTTP_400_BAD_REQUEST,
+347               detail="Exam has no questions assembled yet.",
+348           )
+349   
+350       # ── 2. Build question_id → order_entry map ──
+351       question_order: list[dict] = exam.question_order
+352       id_to_order: dict[str, dict] = {
+353           entry["question_id"]: entry
+354           for entry in question_order
+355           if entry.get("question_id")
+356       }
+357   
+358       # ── 3. Fetch questions from question_bank ──
+359       valid_ids = list(id_to_order.keys())
+360       if not valid_ids:
+361           raise HTTPException(
+362               status_code=status.HTTP_404_NOT_FOUND,
+363               detail="No valid question IDs found in this exam.",
+364           )
+365   
+366       # Convert string UUIDs to uuid objects for SQLAlchemy query
+367       uuid_ids = []
+368       for qid in valid_ids:
+369           try:
+370               uuid_ids.append(uuid_module.UUID(qid))
+371           except ValueError:
+372               pass
+373   
+374       qb_result = await db.execute(
+375           select(QuestionBank).where(QuestionBank.id.in_(uuid_ids))
+376       )
+377       questions_map: dict[str, QuestionBank] = {
+378           str(q.id): q for q in qb_result.scalars().all()
+379       }
+380   
+381       # ── 4. Build ordered list without answers ──
+382       questions: list[QuestionItem] = []
+383       for entry in question_order:
+384           qid = entry.get("question_id", "")
+385           q = questions_map.get(qid)
+386           if not q:
+387               continue
+388   
+389           questions.append(
+390               QuestionItem(
+391                   id=str(q.id),
+392                   qno=entry["qno"],
+393                   question_type=q.question_type,
+394                   marks=q.marks,
+395                   section=entry.get("section", "Subject"),
+396                   section_name=q.section_name,
+397                   topic=q.topic,
+398                   stem_tex=q.stem_tex,
+399                   code_snippet=q.code_snippet,
+400                   code_language=q.code_language,
+401                   choices=q.choices,
+402                   estimated_time_seconds=q.estimated_time_seconds,
+403                   # NOTE: answer is intentionally excluded
+404               )
+405           )
+406   
+407       return ExamScreenResponse(
+408           exam_id=str(exam.id),
+409           paper=exam.paper,
+410           difficulty=exam.difficulty,
+411           total_questions=exam.total_questions,
+412           total_marks=exam.total_marks,
+413           duration_minutes=exam.duration_minutes,
+414           questions=questions,
+415       )
+416   
+417   
+418   # ── DELETE /exams/{exam_id} ───────────────────────────────────────────────────
+419   
+```
+**[REMOVED]**
+```
+(from line ~426)
+    exam_id: uuid.UUID,
+
+```
+**[ADDED]**
+```
+426       exam_id: uuid_module.UUID,
+```
+**[REMOVED]**
+```
+(from line ~430)
+    """Delete an exam and its associated data."""
+
+```
+**[REMOVED]**
+```
+(from line ~434)
+
+
+```
+**[REMOVED]**
+```
+(from line ~435)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Exam not found.",
+        )
+
+```
+**[ADDED]**
+```
+435           raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found.")
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\frontend\src\pages\ExamScreen.tsx
+*Saved at: 3/24/2026, 9:47:37 AM*
+
+**[ADDED]**
+```
+1     /**
+2      * ExamScreen — Part 8
+3      *
+4      * Full exam-taking UI:
+5      *  • Two-panel layout  (question display left + palette right)
+6      *  • Section tabs      (GA / Subject)
+7      *  • Question palette  (color-coded by status)
+8      *  • KaTeX math        (via katex npm package)
+9      *  • Prism.js code     (syntax highlighting)
+10     *  • MCQ / MSQ / NAT   (radio / checkbox / numeric)
+11     *  • Navigation        (Previous, Save & Next, Mark for Review, Clear)
+12     *  • POST /exams/{id}/start   → creates / resumes attempt
+13     *  • GET  /exams/{id}         → loads questions (no answers)
+14     */
+15    
+16    import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+17    import { useParams, useNavigate } from "react-router-dom";
+18    import toast from "react-hot-toast";
+19    
+20    import api from "../services/api";
+21    import LoadingSpinner from "../components/common/LoadingSpinner";
+22    import type {
+23      QuestionItem,
+24      QuestionStatus,
+25      QuestionSection,
+26      ExamScreenData,
+27      AttemptData,
+28      MCQAnswer,
+29      MSQAnswer,
+30      NATAnswer,
+31      AnyAnswer,
+32    } from "../types";
+33    
+34    // ── KaTeX ─────────────────────────────────────────────────────────────────────
+35    // Imported dynamically to avoid build failure if not installed.
+36    // Run: npm install katex @types/katex
+37    let katex: any = null;
+38    try {
+39      // @ts-ignore
+40      katex = await import("katex").then((m) => m.default ?? m);
+41    } catch {
+42      // katex not installed — math will display as raw text
+43    }
+44    
+45    // ── Prism.js ──────────────────────────────────────────────────────────────────
+46    // Run: npm install prismjs @types/prismjs
+47    let Prism: any = null;
+48    try {
+49      // @ts-ignore
+50      Prism = await import("prismjs").then((m) => m.default ?? m);
+51      // @ts-ignore
+52      await import("prismjs/components/prism-python");
+53      // @ts-ignore
+54      await import("prismjs/components/prism-c");
+55    } catch {
+56      // prismjs not installed — code will display without highlighting
+57    }
+58    
+59    // ── Status colours ─────────────────────────────────────────────────────────────
+60    
+61    const STATUS_BG: Record<QuestionStatus, string> = {
+62      not_visited:     "bg-gray-200 text-gray-700 hover:bg-gray-300",
+63      not_answered:    "bg-red-500  text-white   hover:bg-red-600",
+64      answered:        "bg-green-500 text-white  hover:bg-green-600",
+65      marked:          "bg-purple-500 text-white hover:bg-purple-600",
+66      answered_marked: "bg-blue-500 text-white   hover:bg-blue-600",
+67    };
+68    
+69    const STATUS_LEGEND: { status: QuestionStatus; label: string; bg: string }[] = [
+70      { status: "answered",        label: "Answered",          bg: "bg-green-500"  },
+71      { status: "not_answered",    label: "Not Answered",      bg: "bg-red-500"    },
+72      { status: "marked",          label: "Marked for Review", bg: "bg-purple-500" },
+73      { status: "answered_marked", label: "Answered & Marked", bg: "bg-blue-500"   },
+74      { status: "not_visited",     label: "Not Visited",       bg: "bg-gray-200 border border-gray-400"   },
+75    ];
+76    
+77    // ── Math renderer ─────────────────────────────────────────────────────────────
+78    
+79    function MathText({ text }: { text: string }) {
+80      const rendered = useMemo(() => {
+81        if (!katex) return null;
+82        try {
+83          // Split on $$...$$ (display) then $...$ (inline)
+84          const parts: Array<{ type: "text" | "display" | "inline"; content: string }> = [];
+85    
+86          // Step 1: split on display math $$...$$
+87          const displaySplit = text.split(/(\$\$[\s\S]*?\$\$)/g);
+88          const stage1: Array<{ type: "text" | "display"; content: string }> = [];
+89          for (const chunk of displaySplit) {
+90            if (chunk.startsWith("$$") && chunk.endsWith("$$") && chunk.length > 4) {
+91              stage1.push({ type: "display", content: chunk.slice(2, -2) });
+92            } else {
+93              stage1.push({ type: "text", content: chunk });
+94            }
+95          }
+96    
+97          // Step 2: split text chunks on inline math $...$
+98          for (const s1 of stage1) {
+99            if (s1.type === "display") {
+100             parts.push(s1);
+101           } else {
+102             const inlineSplit = s1.content.split(/(\$[^$\n]+?\$)/g);
+103             for (const chunk of inlineSplit) {
+104               if (chunk.startsWith("$") && chunk.endsWith("$") && chunk.length > 2) {
+105                 parts.push({ type: "inline", content: chunk.slice(1, -1) });
+106               } else {
+107                 parts.push({ type: "text", content: chunk });
+108               }
+109             }
+110           }
+111         }
+112   
+113         // Step 3: render
+114         const htmlParts: string[] = parts.map((p) => {
+115           if (p.type === "display") {
+116             try {
+117               return katex.renderToString(p.content, {
+118                 displayMode: true,
+119                 throwOnError: false,
+120                 trust: false,
+121               });
+122             } catch {
+123               return `<span class="text-red-500">[Math Error]</span>`;
+124             }
+125           } else if (p.type === "inline") {
+126             try {
+127               return katex.renderToString(p.content, {
+128                 displayMode: false,
+129                 throwOnError: false,
+130                 trust: false,
+131               });
+132             } catch {
+133               return `<span class="text-red-500">[Math Error]</span>`;
+134             }
+135           } else {
+136             // Preserve newlines as <br>
+137             return p.content
+138               .replace(/&/g, "&amp;")
+139               .replace(/</g, "&lt;")
+140               .replace(/>/g, "&gt;")
+141               .replace(/\n/g, "<br/>");
+142           }
+143         });
+144   
+145         return htmlParts.join("");
+146       } catch {
+147         return null;
+148       }
+149     }, [text]);
+150   
+151     if (rendered !== null) {
+152       return (
+153         <span
+154           className="math-text leading-relaxed"
+155           dangerouslySetInnerHTML={{ __html: rendered }}
+156         />
+157       );
+158     }
+159   
+160     // Fallback: plain text if katex not available
+161     return <span className="leading-relaxed whitespace-pre-wrap">{text}</span>;
+162   }
+163   
+164   // ── Code block ─────────────────────────────────────────────────────────────────
+165   
+166   function CodeBlock({ code, language }: { code: string; language: string | null }) {
+167     const ref = useRef<HTMLElement>(null);
+168   
+169     useEffect(() => {
+170       if (Prism && ref.current) {
+171         Prism.highlightElement(ref.current);
+172       }
+173     }, [code]);
+174   
+175     const langClass = language === "python" ? "language-python" : "language-c";
+176   
+177     return (
+178       <div className="my-4 overflow-x-auto rounded-lg border border-gray-200 bg-gray-900">
+179         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
+180           <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+181             {language ?? "code"}
+182           </span>
+183         </div>
+184         <pre className="p-4 overflow-x-auto text-sm">
+185           <code ref={ref} className={langClass}>
+186             {code}
+187           </code>
+188         </pre>
+189       </div>
+190     );
+191   }
+192   
+193   // ── Answer components ──────────────────────────────────────────────────────────
+194   
+195   function MCQOptions({
+196     choices,
+197     selected,
+198     onChange,
+199   }: {
+200     choices: string[];
+201     selected: number | null;
+202     onChange: (idx: number) => void;
+203   }) {
+204     const labels = ["(A)", "(B)", "(C)", "(D)"];
+205     return (
+206       <div className="space-y-3 mt-4">
+207         {choices.map((choice, idx) => (
+208           <label
+209             key={idx}
+210             className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+211               selected === idx
+212                 ? "border-blue-500 bg-blue-50"
+213                 : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+214             }`}
+215           >
+216             <div className="flex-shrink-0 mt-0.5">
+217               <div
+218                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+219                   selected === idx
+220                     ? "border-blue-500 bg-blue-500"
+221                     : "border-gray-400"
+222                 }`}
+223               >
+224                 {selected === idx && (
+225                   <div className="w-2 h-2 rounded-full bg-white" />
+226                 )}
+227               </div>
+228             </div>
+229             <input
+230               type="radio"
+231               className="sr-only"
+232               checked={selected === idx}
+233               onChange={() => onChange(idx)}
+234             />
+235             <span className="flex gap-2 text-sm text-gray-800">
+236               <span className="font-medium text-gray-500 flex-shrink-0">{labels[idx]}</span>
+237               <MathText text={choice} />
+238             </span>
+239           </label>
+240         ))}
+241       </div>
+242     );
+243   }
+244   
+245   function MSQOptions({
+246     choices,
+247     selected,
+248     onChange,
+249   }: {
+250     choices: string[];
+251     selected: number[];
+252     onChange: (indices: number[]) => void;
+253   }) {
+254     const labels = ["(A)", "(B)", "(C)", "(D)"];
+255   
+256     const toggle = (idx: number) => {
+257       if (selected.includes(idx)) {
+258         onChange(selected.filter((i) => i !== idx));
+259       } else {
+260         onChange([...selected, idx].sort((a, b) => a - b));
+261       }
+262     };
+263   
+264     return (
+265       <div className="space-y-3 mt-4">
+266         <p className="text-xs text-purple-700 font-medium bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-lg inline-block">
+267           Select one or more correct answers
+268         </p>
+269         {choices.map((choice, idx) => (
+270           <label
+271             key={idx}
+272             className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+273               selected.includes(idx)
+274                 ? "border-purple-500 bg-purple-50"
+275                 : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+276             }`}
+277           >
+278             <div className="flex-shrink-0 mt-0.5">
+279               <div
+280                 className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+281                   selected.includes(idx)
+282                     ? "border-purple-500 bg-purple-500"
+283                     : "border-gray-400"
+284                 }`}
+285               >
+286                 {selected.includes(idx) && (
+287                   <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+288                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+289                   </svg>
+290                 )}
+291               </div>
+292             </div>
+293             <input
+294               type="checkbox"
+295               className="sr-only"
+296               checked={selected.includes(idx)}
+297               onChange={() => toggle(idx)}
+298             />
+299             <span className="flex gap-2 text-sm text-gray-800">
+300               <span className="font-medium text-gray-500 flex-shrink-0">{labels[idx]}</span>
+301               <MathText text={choice} />
+302             </span>
+303           </label>
+304         ))}
+305       </div>
+306     );
+307   }
+308   
+309   function NATInput({
+310     value,
+311     onChange,
+312   }: {
+313     value: string;
+314     onChange: (v: string) => void;
+315   }) {
+316     return (
+317       <div className="mt-4">
+318         <p className="text-xs text-orange-700 font-medium bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-lg inline-block mb-3">
+319           Numerical Answer Type — enter a numeric value
+320         </p>
+321         <div className="flex items-center gap-3">
+322           <input
+323             type="number"
+324             step="any"
+325             value={value}
+326             onChange={(e) => onChange(e.target.value)}
+327             placeholder="Enter your answer..."
+328             className="w-64 px-4 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-mono
+329                        focus:border-orange-400 focus:ring-1 focus:ring-orange-400 focus:outline-none
+330                        placeholder-gray-400"
+331           />
+332           {value && (
+333             <span className="text-sm text-gray-500">
+334               Your answer: <strong className="text-gray-900">{value}</strong>
+335             </span>
+336           )}
+337         </div>
+338       </div>
+339     );
+340   }
+341   
+342   // ── Question palette ───────────────────────────────────────────────────────────
+343   
+344   function QuestionPalette({
+345     questions,
+346     questionStatuses,
+347     currentQno,
+348     activeSection,
+349     onNavigate,
+350     onSectionChange,
+351     onSubmit,
+352     responses,
+353   }: {
+354     questions: QuestionItem[];
+355     questionStatuses: Record<string, QuestionStatus>;
+356     currentQno: number;
+357     activeSection: "all" | QuestionSection;
+358     onNavigate: (qno: number) => void;
+359     onSectionChange: (section: "all" | QuestionSection) => void;
+360     onSubmit: () => void;
+361     responses: Record<string, AnyAnswer>;
+362   }) {
+363     const gaQuestions = questions.filter((q) => q.section === "GA");
+364     const subjectQuestions = questions.filter((q) => q.section === "Subject");
+365   
+366     const filteredQuestions =
+367       activeSection === "GA"
+368         ? gaQuestions
+369         : activeSection === "Subject"
+370         ? subjectQuestions
+371         : questions;
+372   
+373     // Compute summary counts
+374     const counts = useMemo(() => {
+375       let answered = 0, notAnswered = 0, marked = 0, answeredMarked = 0, notVisited = 0;
+376       for (const q of questions) {
+377         const st = questionStatuses[q.id] ?? "not_visited";
+378         if (st === "answered") answered++;
+379         else if (st === "not_answered") notAnswered++;
+380         else if (st === "marked") marked++;
+381         else if (st === "answered_marked") answeredMarked++;
+382         else notVisited++;
+383       }
+384       return { answered, notAnswered, marked, answeredMarked, notVisited };
+385     }, [questions, questionStatuses]);
+386   
+387     return (
+388       <div className="w-64 flex-shrink-0 flex flex-col bg-white border-l border-gray-200 h-full">
+389         {/* Section tabs */}
+390         <div className="flex border-b border-gray-200 text-xs font-medium">
+391           {(["all", "GA", "Subject"] as const).map((sec) => (
+392             <button
+393               key={sec}
+394               onClick={() => onSectionChange(sec)}
+395               className={`flex-1 py-2 transition-colors ${
+396                 activeSection === sec
+397                   ? "border-b-2 border-blue-600 text-blue-700 bg-blue-50"
+398                   : "text-gray-600 hover:bg-gray-50"
+399               }`}
+400             >
+401               {sec === "all" ? "All" : sec === "GA" ? `GA (${gaQuestions.length})` : `Subject (${subjectQuestions.length})`}
+402             </button>
+403           ))}
+404         </div>
+405   
+406         {/* Summary legend */}
+407         <div className="px-3 py-3 border-b border-gray-100 space-y-1.5">
+408           {STATUS_LEGEND.map(({ status, label, bg }) => {
+409             const count =
+410               status === "answered" ? counts.answered
+411               : status === "not_answered" ? counts.notAnswered
+412               : status === "marked" ? counts.marked
+413               : status === "answered_marked" ? counts.answeredMarked
+414               : counts.notVisited;
+415             return (
+416               <div key={status} className="flex items-center gap-2 text-xs text-gray-700">
+417                 <div className={`w-5 h-5 rounded flex-shrink-0 ${bg}`} />
+418                 <span className="flex-1">{label}</span>
+419                 <span className="font-semibold">{count}</span>
+420               </div>
+421             );
+422           })}
+423         </div>
+424   
+425         {/* Question grid */}
+426         <div className="flex-1 overflow-y-auto p-3">
+427           <div className="grid grid-cols-5 gap-1">
+428             {filteredQuestions.map((q) => {
+429               const status = questionStatuses[q.id] ?? "not_visited";
+430               const isCurrent = q.qno === currentQno;
+431               return (
+432                 <button
+433                   key={q.id}
+434                   onClick={() => onNavigate(q.qno)}
+435                   title={`Q${q.qno} — ${q.question_type} — ${q.marks}M — ${status.replace("_", " ")}`}
+436                   className={`
+437                     w-10 h-10 rounded text-xs font-semibold transition-all
+438                     ${STATUS_BG[status]}
+439                     ${isCurrent ? "ring-2 ring-offset-1 ring-gray-800 scale-110" : ""}
+440                   `}
+441                 >
+442                   {q.qno}
+443                 </button>
+444               );
+445             })}
+446           </div>
+447         </div>
+448   
+449         {/* Submit button */}
+450         <div className="p-3 border-t border-gray-200">
+451           <button
+452             onClick={onSubmit}
+453             className="w-full bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+454           >
+455             Submit Exam
+456           </button>
+457           <p className="text-xs text-gray-400 text-center mt-1.5">
+458             {counts.answered + counts.answeredMarked}/{questions.length} answered
+459           </p>
+460         </div>
+461       </div>
+462     );
+463   }
+464   
+465   // ── Main ExamScreen component ─────────────────────────────────────────────────
+466   
+467   export default function ExamScreen() {
+468     const { examId } = useParams<{ examId: string }>();
+469     const navigate = useNavigate();
+470   
+471     // ── Data state ──────────────────────────────────────────────────────────────
+472     const [exam, setExam] = useState<ExamScreenData | null>(null);
+473     const [attempt, setAttempt] = useState<AttemptData | null>(null);
+474     const [loadingExam, setLoadingExam] = useState(true);
+475     const [loadingStart, setLoadingStart] = useState(true);
+476     const [error, setError] = useState<string | null>(null);
+477   
+478     // ── Answer / navigation state ───────────────────────────────────────────────
+479     const [currentQno, setCurrentQno] = useState(1);
+480     const [responses, setResponses] = useState<Record<string, AnyAnswer>>({});
+481     const [questionStatuses, setQuestionStatuses] = useState<Record<string, QuestionStatus>>({});
+482     const [activeSection, setActiveSection] = useState<"all" | QuestionSection>("all");
+483     const [showSubmitModal, setShowSubmitModal] = useState(false);
+484   
+485     // ── Load exam questions ─────────────────────────────────────────────────────
+486     useEffect(() => {
+487       if (!examId) return;
+488       const load = async () => {
+489         try {
+490           const { data } = await api.get<ExamScreenData>(`/exams/${examId}`);
+491           setExam(data);
+492         } catch (err: any) {
+493           const msg = err?.response?.data?.detail ?? "Failed to load exam questions.";
+494           setError(msg);
+495           toast.error(msg);
+496         } finally {
+497           setLoadingExam(false);
+498         }
+499       };
+500       load();
+501     }, [examId]);
+502   
+503     // ── Start / resume attempt ──────────────────────────────────────────────────
+504     useEffect(() => {
+505       if (!examId || loadingExam || error) return;
+506       const start = async () => {
+507         try {
+508           const { data } = await api.post<AttemptData>(`/exams/${examId}/start`, {});
+509           setAttempt(data);
+510   
+511           // Restore saved responses & statuses (resume)
+512           if (data.responses && Object.keys(data.responses).length > 0) {
+513             setResponses(data.responses as Record<string, AnyAnswer>);
+514           }
+515           if (data.question_statuses && Object.keys(data.question_statuses).length > 0) {
+516             setQuestionStatuses(data.question_statuses as Record<string, QuestionStatus>);
+517           }
+518   
+519           if (data.is_resume) {
+520             toast.success("Resuming your exam session.", { icon: "🔄" });
+521           }
+522         } catch (err: any) {
+523           const msg = err?.response?.data?.detail ?? "Failed to start exam attempt.";
+524           setError(msg);
+525           toast.error(msg);
+526         } finally {
+527           setLoadingStart(false);
+528         }
+529       };
+530       start();
+531     }, [examId, loadingExam, error]);
+532   
+533     // ── Derived values ──────────────────────────────────────────────────────────
+534     const questions = exam?.questions ?? [];
+535   
+536     const currentQuestion = useMemo(
+537       () => questions.find((q) => q.qno === currentQno) ?? null,
+538       [questions, currentQno]
+539     );
+540   
+541     // ── Mark question as visited when navigating to it ─────────────────────────
+542     const markVisited = useCallback(
+543       (question: QuestionItem) => {
+544         setQuestionStatuses((prev) => {
+545           const current = prev[question.id] ?? "not_visited";
+546           if (current === "not_visited") {
+547             return { ...prev, [question.id]: "not_answered" };
+548           }
+549           return prev;
+550         });
+551       },
+552       []
+553     );
+554   
+555     // When currentQno changes, mark the new question as visited
+556     useEffect(() => {
+557       if (currentQuestion) markVisited(currentQuestion);
+558     }, [currentQno, currentQuestion, markVisited]);
+559   
+560     // ── Answer handlers ─────────────────────────────────────────────────────────
+561   
+562     const handleAnswerMCQ = useCallback(
+563       (idx: number) => {
+564         if (!currentQuestion) return;
+565         const qid = currentQuestion.id;
+566         const answer: MCQAnswer = { index: idx };
+567         setResponses((prev) => ({ ...prev, [qid]: answer }));
+568         setQuestionStatuses((prev) => {
+569           const current = prev[qid] ?? "not_visited";
+570           const next = current === "marked" || current === "answered_marked"
+571             ? "answered_marked"
+572             : "answered";
+573           return { ...prev, [qid]: next };
+574         });
+575       },
+576       [currentQuestion]
+577     );
+578   
+579     const handleAnswerMSQ = useCallback(
+580       (indices: number[]) => {
+581         if (!currentQuestion) return;
+582         const qid = currentQuestion.id;
+583         if (indices.length === 0) {
+584           // Treat as cleared
+585           setResponses((prev) => {
+586             const next = { ...prev };
+587             delete next[qid];
+588             return next;
+589           });
+590           setQuestionStatuses((prev) => {
+591             const current = prev[qid] ?? "not_answered";
+592             const next = current === "answered_marked" ? "marked" : "not_answered";
+593             return { ...prev, [qid]: next };
+594           });
+595         } else {
+596           const answer: MSQAnswer = { indices };
+597           setResponses((prev) => ({ ...prev, [qid]: answer }));
+598           setQuestionStatuses((prev) => {
+599             const current = prev[qid] ?? "not_visited";
+600             const next = current === "marked" || current === "answered_marked"
+601               ? "answered_marked"
+602               : "answered";
+603             return { ...prev, [qid]: next };
+604           });
+605         }
+606       },
+607       [currentQuestion]
+608     );
+609   
+610     const handleAnswerNAT = useCallback(
+611       (value: string) => {
+612         if (!currentQuestion) return;
+613         const qid = currentQuestion.id;
+614         if (value.trim() === "") {
+615           setResponses((prev) => {
+616             const next = { ...prev };
+617             delete next[qid];
+618             return next;
+619           });
+620           setQuestionStatuses((prev) => {
+621             const current = prev[qid] ?? "not_answered";
+622             const next = current === "answered_marked" ? "marked" : "not_answered";
+623             return { ...prev, [qid]: next };
+624           });
+625         } else {
+626           const answer: NATAnswer = { value };
+627           setResponses((prev) => ({ ...prev, [qid]: answer }));
+628           setQuestionStatuses((prev) => {
+629             const current = prev[qid] ?? "not_visited";
+630             const next = current === "marked" || current === "answered_marked"
+631               ? "answered_marked"
+632               : "answered";
+633             return { ...prev, [qid]: next };
+634           });
+635         }
+636       },
+637       [currentQuestion]
+638     );
+639   
+640     // ── Navigation handlers ─────────────────────────────────────────────────────
+641   
+642     const handleNavigateTo = useCallback(
+643       (qno: number) => {
+644         setCurrentQno(qno);
+645       },
+646       []
+647     );
+648   
+649     const handlePrevious = useCallback(() => {
+650       if (currentQno > 1) {
+651         setCurrentQno((n) => n - 1);
+652       }
+653     }, [currentQno]);
+654   
+655     const handleSaveAndNext = useCallback(() => {
+656       // If no answer yet for MCQ/MSQ, mark as not_answered (already done by markVisited)
+657       const nextQno = currentQno + 1;
+658       if (nextQno <= questions.length) {
+659         setCurrentQno(nextQno);
+660       }
+661     }, [currentQno, questions.length]);
+662   
+663     const handleMarkForReview = useCallback(() => {
+664       if (!currentQuestion) return;
+665       const qid = currentQuestion.id;
+666       setQuestionStatuses((prev) => {
+667         const hasAnswer = !!responses[qid];
+668         const next: QuestionStatus = hasAnswer ? "answered_marked" : "marked";
+669         return { ...prev, [qid]: next };
+670       });
+671       // Navigate to next question
+672       const nextQno = currentQno + 1;
+673       if (nextQno <= questions.length) {
+674         setCurrentQno(nextQno);
+675       }
+676     }, [currentQuestion, responses, currentQno, questions.length]);
+677   
+678     const handleClearResponse = useCallback(() => {
+679       if (!currentQuestion) return;
+680       const qid = currentQuestion.id;
+681       setResponses((prev) => {
+682         const next = { ...prev };
+683         delete next[qid];
+684         return next;
+685       });
+686       setQuestionStatuses((prev) => {
+687         const current = prev[qid] ?? "not_answered";
+688         const next: QuestionStatus =
+689           current === "answered_marked" ? "marked" : "not_answered";
+690         return { ...prev, [qid]: next };
+691       });
+692     }, [currentQuestion]);
+693   
+694     // ── Submit ──────────────────────────────────────────────────────────────────
+695   
+696     const handleSubmit = useCallback(() => {
+697       setShowSubmitModal(true);
+698     }, []);
+699   
+700     // ── Loading / error states ──────────────────────────────────────────────────
+701   
+702     if (loadingExam || loadingStart) {
+703       return <LoadingSpinner fullScreen />;
+704     }
+705   
+706     if (error) {
+707       return (
+708         <div className="min-h-screen flex items-center justify-center bg-gray-50">
+709           <div className="text-center max-w-md p-8 bg-white rounded-xl border border-red-200">
+710             <div className="text-4xl mb-4">⚠️</div>
+711             <h2 className="text-lg font-bold text-gray-900 mb-2">Cannot Start Exam</h2>
+712             <p className="text-sm text-red-600 mb-6">{error}</p>
+713             <button
+714               onClick={() => navigate("/dashboard")}
+715               className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700"
+716             >
+717               Back to Dashboard
+718             </button>
+719           </div>
+720         </div>
+721       );
+722     }
+723   
+724     if (!exam || !currentQuestion) {
+725       return <LoadingSpinner fullScreen />;
+726     }
+727   
+728     // ── Current answer ──────────────────────────────────────────────────────────
+729     const currentAnswer = responses[currentQuestion.id];
+730     const mcqSelected =
+731       currentQuestion.question_type === "MCQ" && currentAnswer
+732         ? (currentAnswer as MCQAnswer).index
+733         : null;
+734     const msqSelected =
+735       currentQuestion.question_type === "MSQ" && currentAnswer
+736         ? (currentAnswer as MSQAnswer).indices ?? []
+737         : [];
+738     const natValue =
+739       currentQuestion.question_type === "NAT" && currentAnswer
+740         ? (currentAnswer as NATAnswer).value ?? ""
+741         : "";
+742   
+743     const currentStatus = questionStatuses[currentQuestion.id] ?? "not_visited";
+744     const isCurrentMarked =
+745       currentStatus === "marked" || currentStatus === "answered_marked";
+746   
+747     // ── Summary counts for submit modal ────────────────────────────────────────
+748     const summaryForModal = useMemo(() => {
+749       let answered = 0, notAnswered = 0, notVisited = 0, marked = 0;
+750       for (const q of questions) {
+751         const st = questionStatuses[q.id] ?? "not_visited";
+752         if (st === "answered" || st === "answered_marked") answered++;
+753         else if (st === "not_answered") notAnswered++;
+754         else if (st === "marked") marked++;
+755         else notVisited++;
+756       }
+757       return { answered, notAnswered, notVisited, marked };
+758     }, [questions, questionStatuses]);
+759   
+760     // ── Type badge ──────────────────────────────────────────────────────────────
+761     const typeBadgeClass =
+762       currentQuestion.question_type === "MCQ"
+763         ? "bg-blue-100 text-blue-700"
+764         : currentQuestion.question_type === "MSQ"
+765         ? "bg-purple-100 text-purple-700"
+766         : "bg-orange-100 text-orange-700";
+767   
+768     // ── Render ──────────────────────────────────────────────────────────────────
+769     return (
+770       <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+771   
+772         {/* ── Top bar ── */}
+773         <div className="flex-shrink-0 bg-blue-800 text-white px-4 py-2 flex items-center justify-between shadow-md">
+774           <div className="flex items-center gap-3">
+775             <span className="text-lg font-bold">GATE 2026 Mock Test</span>
+776             <span className="text-blue-300">|</span>
+777             <span className="text-sm text-blue-200">
+778               Paper: <strong className="text-white">{exam.paper}</strong>
+779             </span>
+780             <span className="text-blue-300">|</span>
+781             <span className="text-sm text-blue-200">
+782               <strong className="text-white capitalize">{exam.difficulty}</strong> difficulty
+783             </span>
+784             <span className="text-blue-300">|</span>
+785             <span className="text-sm text-blue-200">
+786               <strong className="text-white">{exam.total_questions}</strong> Qs ·{" "}
+787               <strong className="text-white">{exam.total_marks}</strong> Marks
+788             </span>
+789           </div>
+790   
+791           {/* Timer placeholder (Part 9) */}
+792           <div className="flex items-center gap-4">
+793             <div className="bg-blue-900 px-4 py-1.5 rounded-lg">
+794               <span className="text-sm font-mono font-bold tracking-wider">
+795                 ⏱ {Math.floor((attempt?.remaining_seconds ?? exam.duration_minutes * 60) / 3600)
+796                     .toString().padStart(2, "0")}:
+797                 {Math.floor(((attempt?.remaining_seconds ?? exam.duration_minutes * 60) % 3600) / 60)
+798                     .toString().padStart(2, "0")}:
+799                 {((attempt?.remaining_seconds ?? exam.duration_minutes * 60) % 60)
+800                     .toString().padStart(2, "0")}
+801               </span>
+802             </div>
+803             <button
+804               onClick={() => navigate("/dashboard")}
+805               className="text-xs text-blue-300 hover:text-white transition-colors"
+806             >
+807               ✕ Exit
+808             </button>
+809           </div>
+810         </div>
+811   
+812         {/* ── Main body ── */}
+813         <div className="flex-1 flex overflow-hidden">
+814   
+815           {/* ── Left: Question display ── */}
+816           <div className="flex-1 flex flex-col overflow-hidden">
+817   
+818             {/* Question header */}
+819             <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3">
+820               <span className="text-sm font-bold text-gray-800">
+821                 Question {currentQuestion.qno} of {questions.length}
+822               </span>
+823               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${typeBadgeClass}`}>
+824                 {currentQuestion.question_type}
+825               </span>
+826               <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700">
+827                 {currentQuestion.marks} Mark{currentQuestion.marks > 1 ? "s" : ""}
+828               </span>
+829               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700">
+830                 {currentQuestion.section_name}
+831               </span>
+832               {currentQuestion.marks === 1 ? (
+833                 <span className="text-xs text-red-600 ml-auto">
+834                   Wrong answer: −{(1/3).toFixed(2)} marks
+835                 </span>
+836               ) : currentQuestion.marks === 2 && currentQuestion.question_type === "MCQ" ? (
+837                 <span className="text-xs text-red-600 ml-auto">
+838                   Wrong answer: −{(2/3).toFixed(2)} marks
+839                 </span>
+840               ) : (
+841                 <span className="text-xs text-green-700 ml-auto">
+842                   No negative marking
+843                 </span>
+844               )}
+845             </div>
+846   
+847             {/* Question content (scrollable) */}
+848             <div className="flex-1 overflow-y-auto px-6 py-5">
+849               {/* Stem */}
+850               <div className="text-base text-gray-900 leading-relaxed">
+851                 <MathText text={currentQuestion.stem_tex} />
+852               </div>
+853   
+854               {/* Code snippet */}
+855               {currentQuestion.code_snippet && (
+856                 <CodeBlock
+857                   code={currentQuestion.code_snippet}
+858                   language={currentQuestion.code_language}
+859                 />
+860               )}
+861   
+862               {/* Answer section */}
+863               <div className="mt-6">
+864                 {currentQuestion.question_type === "MCQ" && currentQuestion.choices && (
+865                   <MCQOptions
+866                     choices={currentQuestion.choices}
+867                     selected={mcqSelected}
+868                     onChange={handleAnswerMCQ}
+869                   />
+870                 )}
+871   
+872                 {currentQuestion.question_type === "MSQ" && currentQuestion.choices && (
+873                   <MSQOptions
+874                     choices={currentQuestion.choices}
+875                     selected={msqSelected}
+876                     onChange={handleAnswerMSQ}
+877                   />
+878                 )}
+879   
+880                 {currentQuestion.question_type === "NAT" && (
+881                   <NATInput value={natValue} onChange={handleAnswerNAT} />
+882                 )}
+883               </div>
+884             </div>
+885   
+886             {/* ── Navigation bar ── */}
+887             <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-3 flex items-center gap-3">
+888               {/* Previous */}
+889               <button
+890                 onClick={handlePrevious}
+891                 disabled={currentQno === 1}
+892                 className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700
+893                            hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+894               >
+895                 ← Previous
+896               </button>
+897   
+898               <div className="flex-1" />
+899   
+900               {/* Clear Response */}
+901               <button
+902                 onClick={handleClearResponse}
+903                 disabled={!responses[currentQuestion.id]}
+904                 className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700
+905                            hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+906               >
+907                 Clear Response
+908               </button>
+909   
+910               {/* Mark for Review & Next */}
+911               <button
+912                 onClick={handleMarkForReview}
+913                 className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+914                   isCurrentMarked
+915                     ? "border-purple-400 bg-purple-50 text-purple-700 hover:bg-purple-100"
+916                     : "border-purple-300 text-purple-700 hover:bg-purple-50"
+917                 }`}
+918               >
+919                 {isCurrentMarked ? "✓ Marked" : "Mark for Review"} & Next
+920               </button>
+921   
+922               {/* Save & Next */}
+923               <button
+924                 onClick={handleSaveAndNext}
+925                 className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold
+926                            hover:bg-blue-700 transition-colors"
+927               >
+928                 {currentQno === questions.length ? "Save" : "Save & Next →"}
+929               </button>
+930             </div>
+931           </div>
+932   
+933           {/* ── Right: Question Palette ── */}
+934           <QuestionPalette
+935             questions={questions}
+936             questionStatuses={questionStatuses}
+937             currentQno={currentQno}
+938             activeSection={activeSection}
+939             onNavigate={handleNavigateTo}
+940             onSectionChange={setActiveSection}
+941             onSubmit={handleSubmit}
+942             responses={responses}
+943           />
+944         </div>
+945   
+946         {/* ── Submit confirmation modal ── */}
+947         {showSubmitModal && (
+948           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+949             <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+950               <h2 className="text-xl font-bold text-gray-900 mb-2">Submit Exam?</h2>
+951               <p className="text-sm text-gray-500 mb-6">
+952                 Please review your attempt summary before submitting.
+953               </p>
+954   
+955               <div className="grid grid-cols-2 gap-3 mb-6">
+956                 <div className="bg-green-50 rounded-lg p-3 text-center">
+957                   <p className="text-2xl font-bold text-green-700">{summaryForModal.answered}</p>
+958                   <p className="text-xs text-green-600 mt-0.5">Answered</p>
+959                 </div>
+960                 <div className="bg-red-50 rounded-lg p-3 text-center">
+961                   <p className="text-2xl font-bold text-red-700">{summaryForModal.notAnswered}</p>
+962                   <p className="text-xs text-red-600 mt-0.5">Not Answered</p>
+963                 </div>
+964                 <div className="bg-purple-50 rounded-lg p-3 text-center">
+965                   <p className="text-2xl font-bold text-purple-700">{summaryForModal.marked}</p>
+966                   <p className="text-xs text-purple-600 mt-0.5">Marked for Review</p>
+967                 </div>
+968                 <div className="bg-gray-50 rounded-lg p-3 text-center">
+969                   <p className="text-2xl font-bold text-gray-700">{summaryForModal.notVisited}</p>
+970                   <p className="text-xs text-gray-500 mt-0.5">Not Visited</p>
+971                 </div>
+972               </div>
+973   
+974               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg mb-6">
+975                 ⚠️ Once submitted, you cannot change your answers. Marked-for-review
+976                 questions will also be evaluated.
+977               </p>
+978   
+979               <div className="flex gap-3">
+980                 <button
+981                   onClick={() => setShowSubmitModal(false)}
+982                   className="flex-1 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+983                 >
+984                   Cancel — Keep Attempting
+985                 </button>
+986                 <button
+987                   onClick={() => {
+988                     setShowSubmitModal(false);
+989                     // Part 10 will implement actual submission
+990                     toast.success("Submission coming in Part 10!", { icon: "🔜" });
+991                   }}
+992                   className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors"
+993                 >
+994                   Yes, Submit Now
+995                 </button>
+996               </div>
+997             </div>
+998           </div>
+999         )}
+1000      </div>
+1001    );
+1002  }
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\.env
+*Saved at: 3/23/2026, 4:48:03 PM*
+
+**[ADDED]**
+```
+11    
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\services\llm_service.py
+*Saved at: 3/23/2026, 4:46:23 PM*
+
+**[REMOVED]**
+```
+(from line ~91)
+    Fix LaTeX backslashes that are not properly escaped for JSON.
+
+```
+**[ADDED]**
+```
+91        Character-by-character fix for unescaped LaTeX backslashes inside JSON strings.
+```
+**[REMOVED]**
+```
+(from line ~93)
+    LLMs often output LaTeX like \\pi, \\frac, \\sigma, \\lambda with a single
+    backslash inside JSON strings, which is invalid JSON and causes parse errors.
+
+```
+**[ADDED]**
+```
+93        LLMs frequently output LaTeX commands with single backslashes inside JSON,
+94        e.g.:  \\pi  \\frac  \\sigma  \\mathbb  \\nabla  \\texttt  \\{  \\}
+95        These are INVALID JSON escape sequences and cause json.loads to crash.
+```
+**[REMOVED]**
+```
+(from line ~97)
+    Two-pass approach:
+      Pass 1 – Fix clearly invalid JSON escape sequences:
+               \\p, \\m, \\l, \\s, \\J, \\{, \\(, \\^ etc. → \\\\p, \\\\m …
+      Pass 2 – Fix ambiguous escapes (\\b, \\f, \\n, \\r, \\t) when followed by
+               letters, meaning they are LaTeX commands (\\begin, \\frac,
+               \\nabla, \\right, \\times) not JSON control characters.
+
+```
+**[ADDED]**
+```
+97        JSON only allows these escape sequences:
+98            \\"  \\\\  \\/  \\b  \\f  \\n  \\r  \\t  \\uXXXX
+99    
+100       Anything else (\\p, \\m, \\s, \\{, \\J, \\l, etc.) is invalid.
+101       Also \\f, \\n, \\b, \\r, \\t followed by a letter means a LaTeX command
+102       (\\frac, \\nabla, \\begin, \\right, \\times) not a JSON control char.
+103   
+104       Strategy: walk character-by-character, track whether we are inside a JSON
+105       string, and whenever we see a backslash that starts an invalid escape,
+106       double it.
+```
+**[REMOVED]**
+```
+(from line ~108)
+    # Pass 1: replace \X where X is NOT a valid JSON escape character.
+    # Valid JSON escape chars after \: " \ / b f n r t u
+    text = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', text)
+
+```
+**[ADDED]**
+```
+108       result = []
+109       i = 0
+110       in_string = False
+```
+**[REMOVED]**
+```
+(from line ~112)
+    # Pass 2: fix \b \f \n \r \t that start LaTeX command words
+    # e.g. \times → \\times, \frac → \\frac, \begin → \\begin, \nabla → \\nabla
+    # Negative lookbehind (?<!\\) prevents double-fixing already-escaped \\times
+    text = re.sub(r'(?<!\\)\\([bfnrt])(?=[a-zA-Z])', r'\\\\\1', text)
+
+```
+**[ADDED]**
+```
+112       while i < len(text):
+113           c = text[i]
+```
+**[REMOVED]**
+```
+(from line ~115)
+    return text
+
+```
+**[ADDED]**
+```
+115           # ── Outside a JSON string ─────────────────────────────────────────────
+116           if not in_string:
+117               result.append(c)
+118               if c == '"':
+119                   in_string = True
+120               i += 1
+121               continue
+```
+**[ADDED]**
+```
+123           # ── Inside a JSON string ──────────────────────────────────────────────
+124           if c == '"':
+125               # Unescaped quote ends the string
+126               in_string = False
+127               result.append(c)
+128               i += 1
+129               continue
+```
+**[ADDED]**
+```
+131           if c != '\\':
+132               result.append(c)
+133               i += 1
+134               continue
+135   
+136           # ── We have a backslash inside a JSON string ──────────────────────────
+137           if i + 1 >= len(text):
+138               # Backslash at very end of input — keep as-is
+139               result.append(c)
+140               i += 1
+141               continue
+142   
+143           nxt = text[i + 1]
+144   
+145           # Always-valid JSON escape sequences: \", \\, \/
+146           if nxt in '"\\/':
+147               result.append(c)
+148               result.append(nxt)
+149               i += 2
+150               continue
+151   
+152           # Unicode escape \uXXXX — valid only if followed by exactly 4 hex digits
+153           if nxt == 'u':
+154               hex_chars = text[i + 2: i + 6]
+155               if len(hex_chars) == 4 and all(
+156                   h in '0123456789abcdefABCDEF' for h in hex_chars
+157               ):
+158                   # Valid \uXXXX — keep all 6 chars
+159                   result.append(c)
+160                   result.append(nxt)
+161                   i += 2
+162                   continue
+163               else:
+164                   # \u NOT followed by 4 hex digits → LaTeX (\underbrace, \uparrow…)
+165                   result.append('\\')
+166                   result.append('\\')
+167                   i += 1
+168                   continue
+169   
+170           # Ambiguous: \b \f \n \r \t
+171           # These are valid JSON control chars BUT also start many LaTeX commands:
+172           #   \frac \nabla \begin \right \times \boldsymbol \newline ...
+173           # Heuristic: if the char AFTER nxt is a letter → it is a LaTeX command.
+174           #   \frac{  → nxt='f', after='r' (letter) → double backslash
+175           #   \nabla  → nxt='n', after='a' (letter) → double backslash
+176           #   "text\n"→ nxt='n', after='"' (not letter) → keep as JSON \n
+177           if nxt in 'bfnrt':
+178               after_nxt = text[i + 2] if i + 2 < len(text) else ''
+179               if after_nxt.isalpha():
+180                   # LaTeX command → double the backslash, don't consume nxt
+181                   result.append('\\')
+182                   result.append('\\')
+183                   i += 1
+184               else:
+185                   # Legitimate JSON control character
+186                   result.append(c)
+187                   result.append(nxt)
+188                   i += 2
+189               continue
+190   
+191           # Everything else: \p \m \s \l \a \c \d \{ \} \( \) \^ \_ \| \> \J …
+192           # All invalid in JSON → double the backslash, leave next char in stream
+193           result.append('\\')
+194           result.append('\\')
+195           i += 1
+196   
+197       return ''.join(result)
+198   
+199   
+```
+**[REMOVED]**
+```
+(from line ~203)
+    Handles markdown code fences, extra surrounding text,
+    and unescaped LaTeX backslashes.
+
+```
+**[ADDED]**
+```
+203   
+204       Steps:
+205         1. Strip markdown code fences if present.
+206         2. Find the outermost [ ... ] array.
+207         3. Fix any unescaped LaTeX backslashes (character-by-character).
+208         4. Parse JSON and return.
+```
+**[REMOVED]**
+```
+(from line ~212)
+    # 1. Try markdown code fence: ```json ... ``` or ``` ... ```
+    fence_pattern = r"```(?:json)?\s*\n?(.*?)\n?\s*```"
+    match = re.search(fence_pattern, cleaned, re.DOTALL)
+    if match:
+        cleaned = match.group(1).strip()
+
+```
+**[ADDED]**
+```
+212       # Step 1 — strip ```json ... ``` or ``` ... ``` fences
+213       fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", cleaned, re.DOTALL)
+214       if fence_match:
+215           cleaned = fence_match.group(1).strip()
+```
+**[REMOVED]**
+```
+(from line ~217)
+    # 2. Find the outermost [ ... ]
+
+```
+**[ADDED]**
+```
+217       # Step 2 — find outermost [ ... ]
+```
+**[REMOVED]**
+```
+(from line ~221)
+        cleaned = cleaned[start : end + 1]
+
+```
+**[ADDED]**
+```
+221           cleaned = cleaned[start: end + 1]
+```
+**[REMOVED]**
+```
+(from line ~223)
+    # 3. Fix LaTeX backslash escaping before JSON parse
+    cleaned = _fix_json_latex_escapes(cleaned)
+
+```
+**[ADDED]**
+```
+223       # Step 3 — fix LaTeX backslash escaping before parsing
+224       fixed = _fix_json_latex_escapes(cleaned)
+```
+**[REMOVED]**
+```
+(from line ~226)
+    # 4. Parse JSON
+
+```
+**[ADDED]**
+```
+226       # Step 4 — parse JSON
+```
+**[REMOVED]**
+```
+(from line ~228)
+        parsed = json.loads(cleaned)
+
+```
+**[ADDED]**
+```
+228           parsed = json.loads(fixed)
+```
+**[REMOVED]**
+```
+(from line ~230)
+        logger.error(f"JSON parse error: {exc}\nRaw text:\n{text[:500]}")
+
+```
+**[ADDED]**
+```
+230           # Log BOTH original and fixed text so we can diagnose remaining issues
+231           logger.error(
+232               f"JSON parse error after escape-fix: {exc}\n"
+233               f"--- Original LLM text (first 600 chars) ---\n{text[:600]}\n"
+234               f"--- Fixed text (first 600 chars) ---\n{fixed[:600]}"
+235           )
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\core\config.py
+*Saved at: 3/23/2026, 4:43:47 PM*
+
+**[REMOVED]**
+```
+(from line ~29)
+    NEBIUS_MODEL: str = os.getenv("NEBIUS_MODEL", "google/gemma-3-27b-it")
+
+```
+**[ADDED]**
+```
+29        NEBIUS_MODEL: str = os.getenv("NEBIUS_MODEL", "deepseek-ai/DeepSeek-V3.2")
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\services\question_generator.py
+*Saved at: 3/23/2026, 4:28:57 PM*
+
+**[REMOVED]**
+```
+(from line ~450)
+    """Mark an exam generation as failed via generation_progress."""
+
+```
+**[ADDED]**
+```
+450       """Mark an exam generation as failed."""
+```
+**[ADDED]**
+```
+453           exam.status = "failed"
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\prompts\generate_ga.json
+*Saved at: 3/23/2026, 4:28:10 PM*
+
+**[REMOVED]**
+```
+(from line ~3)
+  "system_prompt": "You are an expert GATE General Aptitude question author for GATE 2026.\n\nSTRICT OUTPUT FORMAT:\nReturn ONLY a valid JSON array. No text before or after. No markdown. No explanation.\n\nEach element must be a JSON object with EXACTLY these keys:\n- \"stem_tex\" (string): Question text. Use LaTeX for math where needed.\n- \"code_snippet\": null (GA questions never have code)\n- \"code_language\": null\n- \"choices\" (array): Exactly 4 option strings.\n- \"answer\" (object): {\"index\": N} where N is the 0-based index of the correct choice.\n- \"question_type\": \"MCQ\"\n- \"marks\" (integer): 1 or 2 as specified.\n- \"difficulty\" (string): \"easy\", \"medium\", or \"hard\".\n- \"difficulty_score\" (float): 0.0 to 1.0.\n- \"section_name\": \"General Aptitude\"\n- \"topic\" (string): The specific GA topic (e.g., \"Verbal Aptitude\", \"Data interpretation\").\n- \"estimated_time_seconds\" (integer): 60-120 for 1-mark, 120-180 for 2-mark.\n- \"solution_tex\" (string): Step-by-step solution.\n\nRULES:\n1. GA questions are ALWAYS MCQ with exactly 4 options.\n2. Cover a mix of Verbal, Quantitative, Analytical, and Spatial aptitude.\n3. Verbal questions: grammar, vocabulary, reading comprehension, sentence completion.\n4. Quantitative questions: data interpretation, arithmetic, percentages, ratios.\n5. Analytical questions: logic, deduction, series, puzzles, coding-decoding.\n6. Spatial questions: pattern recognition, figure completion, transformations.\n7. 1-mark questions should be solvable in ~1 minute.\n8. 2-mark questions should require ~2-3 minutes and multi-step reasoning.\n9. Generate ORIGINAL questions. Do NOT copy from any source.\n10. Do NOT include any text outside the JSON array.",
+
+```
+**[ADDED]**
+```
+3       "system_prompt": "You are an expert GATE General Aptitude question author for GATE 2026.\n\nSTRICT OUTPUT FORMAT:\nReturn ONLY a valid JSON array. No text before or after. No markdown. No explanation.\n\nCRITICAL JSON RULE — BACKSLASH ESCAPING:\nEvery LaTeX backslash MUST be doubled in JSON strings.\nWrite \\\\frac (not \\frac), \\\\sqrt (not \\sqrt), \\\\times (not \\times).\nExample of CORRECT JSON: {\"stem_tex\": \"$\\\\frac{1}{2}$\"}\nExample of WRONG JSON:   {\"stem_tex\": \"$\\frac{1}{2}$\"}\n\nEach element must be a JSON object with EXACTLY these keys:\n- \"stem_tex\" (string): Question text. Use LaTeX for math where needed. Double all backslashes.\n- \"code_snippet\": null (GA questions never have code)\n- \"code_language\": null\n- \"choices\" (array): Exactly 4 option strings.\n- \"answer\" (object): {\"index\": N} where N is the 0-based index of the correct choice.\n- \"question_type\": \"MCQ\"\n- \"marks\" (integer): 1 or 2 as specified.\n- \"difficulty\" (string): \"easy\", \"medium\", or \"hard\".\n- \"difficulty_score\" (float): 0.0 to 1.0.\n- \"section_name\": \"General Aptitude\"\n- \"topic\" (string): The specific GA topic (e.g., \"Verbal Aptitude\", \"Data interpretation\").\n- \"estimated_time_seconds\" (integer): 60-120 for 1-mark, 120-180 for 2-mark.\n- \"solution_tex\" (string): Step-by-step solution. Double all backslashes in any LaTeX.\n\nRULES:\n1. GA questions are ALWAYS MCQ with exactly 4 options.\n2. Cover a mix of Verbal, Quantitative, Analytical, and Spatial aptitude.\n3. Verbal questions: grammar, vocabulary, reading comprehension, sentence completion.\n4. Quantitative questions: data interpretation, arithmetic, percentages, ratios.\n5. Analytical questions: logic, deduction, series, puzzles, coding-decoding.\n6. Spatial questions: pattern recognition, figure completion, transformations.\n7. 1-mark questions should be solvable in ~1 minute.\n8. 2-mark questions should require ~2-3 minutes and multi-step reasoning.\n9. Generate ORIGINAL questions. Do NOT copy from any source.\n10. Do NOT include any text outside the JSON array.",
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\prompts\generate_batch.json
+*Saved at: 3/23/2026, 4:28:02 PM*
+
+**[REMOVED]**
+```
+(from line ~3)
+  "system_prompt": "You are an expert GATE exam question author for the GATE 2026 examination conducted by IIT Guwahati.\n\nSTRICT OUTPUT FORMAT:\nReturn ONLY a valid JSON array. No text before or after. No markdown code fences. No explanation.\n\nEach element in the array must be a JSON object with EXACTLY these keys:\n\n- \"stem_tex\" (string): Question text. Use LaTeX for math: $...$ for inline, $$...$$ for display math.\n- \"code_snippet\" (string or null): Code block if the question involves code, otherwise null.\n- \"code_language\" (string or null): \"c\" or \"python\" if code_snippet is present, otherwise null.\n- \"choices\" (array or null): Exactly 4 option strings for MCQ/MSQ. null for NAT.\n- \"answer\" (object): Format depends on type:\n    MCQ: {\"index\": N} where N is 0-based index of the single correct choice.\n    MSQ: {\"indices\": [N1, N2]} array of ALL correct 0-based indices (1 to 3 correct).\n    NAT: {\"value\": <number>, \"tolerance\": <number>} the numeric answer and acceptable tolerance.\n- \"question_type\" (string): \"MCQ\", \"MSQ\", or \"NAT\" — must match what was requested.\n- \"marks\" (integer): 1 or 2 — must match what was requested.\n- \"difficulty\" (string): \"easy\", \"medium\", or \"hard\".\n- \"difficulty_score\" (float): 0.0 (easiest) to 1.0 (hardest).\n- \"section_name\" (string): The section this question belongs to.\n- \"topic\" (string): The specific syllabus topic this question tests.\n- \"estimated_time_seconds\" (integer): Expected time to solve (60-180 for 1-mark, 120-300 for 2-mark).\n- \"solution_tex\" (string): Complete step-by-step solution. Use LaTeX for all math.\n\nRULES:\n1. Generate ORIGINAL questions — never copy from any source.\n2. Each question must test a DIFFERENT topic or sub-concept.\n3. All answers must be mathematically and logically CORRECT.\n4. Solutions must be detailed, step-by-step, and verifiable.\n5. For MSQ, there must be 1 to 3 correct options (never 0 or 4).\n6. For NAT, tolerance should be small (0.001 to 0.1 depending on the answer magnitude).\n7. Questions should be at authentic GATE difficulty — not textbook-easy.\n8. Do NOT include any text outside the JSON array.",
+
+```
+**[ADDED]**
+```
+3       "system_prompt": "You are an expert GATE exam question author for the GATE 2026 examination conducted by IIT Guwahati.\n\nSTRICT OUTPUT FORMAT:\nReturn ONLY a valid JSON array. No text before or after. No markdown code fences. No explanation.\n\nCRITICAL JSON RULE — BACKSLASH ESCAPING:\nEvery LaTeX backslash MUST be doubled in JSON strings.\nWrite \\\\pi (not \\pi), \\\\frac (not \\frac), \\\\sigma (not \\sigma), \\\\mathbb (not \\mathbb), \\\\begin (not \\begin), \\\\end (not \\end), \\\\times (not \\times), \\\\lambda (not \\lambda), \\\\sum (not \\sum), \\\\int (not \\int).\nExample of CORRECT JSON: {\"stem_tex\": \"Find $\\\\frac{d}{dx}(x^2)$\"}\nExample of WRONG JSON:   {\"stem_tex\": \"Find $\\frac{d}{dx}(x^2)$\"}\nA single backslash before any letter (except n, t, r, b, f, u, \\\", \\\\, /) is INVALID JSON and will cause a parse error.\n\nEach element in the array must be a JSON object with EXACTLY these keys:\n\n- \"stem_tex\" (string): Question text. Use LaTeX for math: $...$ for inline, $$...$$ for display math. Remember to double all backslashes.\n- \"code_snippet\" (string or null): Code block if the question involves code, otherwise null.\n- \"code_language\" (string or null): \"c\" or \"python\" if code_snippet is present, otherwise null.\n- \"choices\" (array or null): Exactly 4 option strings for MCQ/MSQ. null for NAT.\n- \"answer\" (object): Format depends on type:\n    MCQ: {\"index\": N} where N is 0-based index of the single correct choice.\n    MSQ: {\"indices\": [N1, N2]} array of ALL correct 0-based indices (1 to 3 correct).\n    NAT: {\"value\": <number>, \"tolerance\": <number>} the numeric answer and acceptable tolerance.\n- \"question_type\" (string): \"MCQ\", \"MSQ\", or \"NAT\" — must match what was requested.\n- \"marks\" (integer): 1 or 2 — must match what was requested.\n- \"difficulty\" (string): \"easy\", \"medium\", or \"hard\".\n- \"difficulty_score\" (float): 0.0 (easiest) to 1.0 (hardest).\n- \"section_name\" (string): The section this question belongs to.\n- \"topic\" (string): The specific syllabus topic this question tests.\n- \"estimated_time_seconds\" (integer): Expected time to solve (60-180 for 1-mark, 120-300 for 2-mark).\n- \"solution_tex\" (string): Complete step-by-step solution. Use LaTeX for all math. Remember to double all backslashes.\n\nRULES:\n1. Generate ORIGINAL questions — never copy from any source.\n2. Each question must test a DIFFERENT topic or sub-concept.\n3. All answers must be mathematically and logically CORRECT.\n4. Solutions must be detailed, step-by-step, and verifiable.\n5. For MSQ, there must be 1 to 3 correct options (never 0 or 4).\n6. For NAT, tolerance should be small (0.001 to 0.1 depending on the answer magnitude).\n7. Questions should be at authentic GATE difficulty — not textbook-easy.\n8. Do NOT include any text outside the JSON array.",
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\services\llm_service.py
+*Saved at: 3/23/2026, 4:27:32 PM*
+
+**[ADDED]**
+```
+89    def _fix_json_latex_escapes(text: str) -> str:
+90        """
+91        Fix LaTeX backslashes that are not properly escaped for JSON.
+92    
+93        LLMs often output LaTeX like \\pi, \\frac, \\sigma, \\lambda with a single
+94        backslash inside JSON strings, which is invalid JSON and causes parse errors.
+95    
+96        Two-pass approach:
+97          Pass 1 – Fix clearly invalid JSON escape sequences:
+98                   \\p, \\m, \\l, \\s, \\J, \\{, \\(, \\^ etc. → \\\\p, \\\\m …
+99          Pass 2 – Fix ambiguous escapes (\\b, \\f, \\n, \\r, \\t) when followed by
+100                  letters, meaning they are LaTeX commands (\\begin, \\frac,
+101                  \\nabla, \\right, \\times) not JSON control characters.
+102       """
+103       # Pass 1: replace \X where X is NOT a valid JSON escape character.
+104       # Valid JSON escape chars after \: " \ / b f n r t u
+105       text = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', text)
+106   
+107       # Pass 2: fix \b \f \n \r \t that start LaTeX command words
+108       # e.g. \times → \\times, \frac → \\frac, \begin → \\begin, \nabla → \\nabla
+109       # Negative lookbehind (?<!\\) prevents double-fixing already-escaped \\times
+110       text = re.sub(r'(?<!\\)\\([bfnrt])(?=[a-zA-Z])', r'\\\\\1', text)
+111   
+112       return text
+113   
+114   
+```
+**[REMOVED]**
+```
+(from line ~118)
+    Handles markdown code fences and extra surrounding text.
+
+```
+**[ADDED]**
+```
+118       Handles markdown code fences, extra surrounding text,
+119       and unescaped LaTeX backslashes.
+```
+**[REMOVED]**
+```
+(from line ~135)
+    # 3. Parse JSON
+
+```
+**[ADDED]**
+```
+135       # 3. Fix LaTeX backslash escaping before JSON parse
+136       cleaned = _fix_json_latex_escapes(cleaned)
+137   
+138       # 4. Parse JSON
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:21:37 PM*
+
+**[ADDED]**
+```
+8     
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:21:36 PM*
+
+**[REMOVED]**
+```
+(from line ~6)
+
+
+```
+**[ADDED]**
+```
+6     Part 7: Exam Generation Progress Page
+7     Frontend page that appears after clicking "Generate Exam". Shows progress bar with "Generating questions... 42/65", updates by polling GET /exams/{id}/status every 3 seconds. Shows estimated time remaining. On completion (status = generated), shows success message with "Start Exam" button that navigates to exam screen. Handle error states (generation failed, partial failure).
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:21:28 PM*
+
+**[ADDED]**
+```
+5     
+6     
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:21:19 PM*
+
+**[REMOVED]**
+```
+(from line ~3)
+
+
+
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:21:17 PM*
+
+**[REMOVED]**
+```
+(from line ~1)
+Implemented the Part-6 and Part-7, testing is not done but the code has some 
+
+```
+**[ADDED]**
+```
+1     Implemented the Part-6 and Part-7, testing is not done but the code has some issue.
+```
+**[ADDED]**
+```
+3     
+4     
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:21:13 PM*
+
+**[REMOVED]**
+```
+(from line ~1)
+Implemented the Part-6 and Part-7, testing is not done 
+
+```
+**[ADDED]**
+```
+1     Implemented the Part-6 and Part-7, testing is not done but the code has some 
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:21:04 PM*
+
+**[REMOVED]**
+```
+(from line ~1)
+Implemented the Part-6 and Part-7
+
+```
+**[ADDED]**
+```
+1     Implemented the Part-6 and Part-7, testing is not done 
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:20:55 PM*
+
+**[REMOVED]**
+```
+(from line ~1)
+Implemented the Part-6 and Part
+
+```
+**[ADDED]**
+```
+1     Implemented the Part-6 and Part-7
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:20:52 PM*
+
+**[REMOVED]**
+```
+(from line ~1)
+Implemented the Part-6 and 
+
+```
+**[ADDED]**
+```
+1     Implemented the Part-6 and Part
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:20:49 PM*
+
+**[REMOVED]**
+```
+(from line ~1)
+Implemented the Part
+
+```
+**[ADDED]**
+```
+1     Implemented the Part-6 and 
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:20:45 PM*
+
+**[ADDED]**
+```
+1     Implemented the Part
+```
+**[REMOVED]**
+```
+(from line ~3)
+
+
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:20:32 PM*
+
+**[ADDED]**
+```
+1     
+2     
+```
+
+---
+
+### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\.git\COMMIT_EDITMSG
+*Saved at: 3/23/2026, 3:20:23 PM*
+
+**[REMOVED]**
+```
+(from line ~1)
+
+
+```
+**[ADDED]**
+```
+1     Part 6: LLM Integration & Question Generation Pipeline
+2     Nebius API client wrapper (llm_service.py), LLM async queue (llm_queue.py), prompt templates JSON files, question generator orchestrator (question_generator.py) that: determines question distribution, retrieves syllabus context, retrieves PYQ examples via pgvector if toggle ON, constructs prompts, calls Kimi-K2.5 in batches of 5, parses JSON responses. Question validator (question_validator.py): JSON schema validation, SymPy verification for NAT answers, embedding uniqueness check. Exam assembler (exam_assembler.py): selects 65 questions following GATE distribution (GA 10 + Subject 55, marks split, type ratio). Updates exam status and generation_progress in database. GET /exams/{id}/status polling endpoint.
+```
+
+---
+
 ### 📄 c:\Users\ELaunch\OneDrive\nitin-p\ai-mock\gate-mock-test\backend\app\main.py
 *Saved at: 3/23/2026, 2:38:11 PM*
 

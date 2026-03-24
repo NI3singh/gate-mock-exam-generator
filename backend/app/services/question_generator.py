@@ -447,9 +447,10 @@ async def _store_questions(
 
 
 async def _set_error(db: AsyncSession, exam_id: uuid.UUID, error_msg: str) -> None:
-    """Mark an exam generation as failed via generation_progress."""
+    """Mark an exam generation as failed."""
     exam = await db.get(Exam, exam_id)
     if exam:
+        exam.status = "failed"
         exam.generation_progress = {
             **(exam.generation_progress or {}),
             "error": error_msg,

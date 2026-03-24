@@ -1,6 +1,7 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import String, Float, Integer, JSON, ForeignKey, Boolean
+from sqlalchemy import String, Float, Integer, JSON, ForeignKey, Boolean, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,13 +15,23 @@ class Attempt(Base):
         PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     exam_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("exams.id", ondelete="CASCADE"), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("exams.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
-    start_time: Mapped[str | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
-    end_time: Mapped[str | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    start_time: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    end_time: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
     submitted: Mapped[bool] = mapped_column(Boolean, default=False)
     auto_submitted: Mapped[bool] = mapped_column(Boolean, default=False)
     responses: Mapped[dict] = mapped_column(JSON, default=dict)
@@ -33,3 +44,6 @@ class Attempt(Base):
     total_unanswered: Mapped[int | None] = mapped_column(Integer, nullable=True)
     score_breakdown: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     topic_analysis: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
