@@ -77,6 +77,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Part 11: Solutions (same screen, modal via ?solutions param) */}
+          <Route
+            path="/result/:attemptId/solutions"
+            element={
+              <ProtectedRoute>
+                <ResultScreen />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/analytics"
             element={

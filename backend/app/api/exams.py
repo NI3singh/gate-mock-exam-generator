@@ -348,12 +348,20 @@ async def get_exam(
         )
 
     # ── 2. Build question_id → order_entry map ──
-    question_order: list[dict] = exam.question_order
+    # question_order may have empty question_id strings (bug in assemble_exam
+    # where stored UUIDs don't update the original dicts), so fall back to
+    # exam.question_ids if question_order yields no valid IDs.
+    question_order: list[dict] = exam.question_order or []
     id_to_order: dict[str, dict] = {
-        entry["question_id"]: entry
+        str(entry["question_id"]): entry
         for entry in question_order
         if entry.get("question_id")
     }
+
+    # Use exam.question_ids as source of truth if id_to_order is empty
+    if not id_to_order and exam.question_ids:
+        for i, qid in enumerate(exam.question_ids):
+            id_to_order[str(qid)] = {"qno": i + 1, "section": "Subject"}
 
     # ── 3. Fetch questions from question_bank ──
     valid_ids = list(id_to_order.keys())
@@ -371,6 +379,12 @@ async def get_exam(
         except ValueError:
             pass
 
+    if not uuid_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No valid UUIDs to query questions.",
+        )
+
     qb_result = await db.execute(
         select(QuestionBank).where(QuestionBank.id.in_(uuid_ids))
     )
@@ -380,16 +394,16 @@ async def get_exam(
 
     # ── 4. Build ordered list without answers ──
     questions: list[QuestionItem] = []
-    for entry in question_order:
-        qid = entry.get("question_id", "")
-        q = questions_map.get(qid)
+    for qid_str in valid_ids:
+        entry = id_to_order[qid_str]
+        q = questions_map.get(qid_str)
         if not q:
             continue
 
         questions.append(
             QuestionItem(
                 id=str(q.id),
-                qno=entry["qno"],
+                qno=entry.get("qno", 0),
                 question_type=q.question_type,
                 marks=q.marks,
                 section=entry.get("section", "Subject"),

@@ -19,7 +19,7 @@
  *    beforeunload, event logging, violation counter
  */
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, Component, ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -37,6 +37,53 @@ import type {
   AnyAnswer,
   AttemptSaveRequest,
 } from "../types";
+
+/* ── Error Boundary ─────────────────────────────────────────────────────── */
+
+interface ErrorBoundaryState { hasError: boolean; errorMessage: string }
+interface ErrorBoundaryProps { children: ReactNode; fallbackMessage?: string }
+
+class ExamErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, errorMessage: "" };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, errorMessage: error.message };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+    console.error("[ExamScreen] Render error:", error, info.componentStack);
+  }
+
+  render(): ReactNode {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="text-center max-w-lg p-8 bg-white rounded-2xl border border-red-200 shadow-lg">
+            <div className="text-5xl mb-4">⚠️</div>
+            <h2 className="text-xl font-bold text-gray-900 mb-3">Something went wrong</h2>
+            <p className="text-sm text-red-600 mb-2 font-mono bg-red-50 p-3 rounded-lg">
+              {this.state.errorMessage}
+            </p>
+            <p className="text-xs text-gray-500 mb-6">
+              Try refreshing the page. If the problem persists, your exam session is
+              auto-saved and you can resume it.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ── KaTeX ─────────────────────────────────────────────────────────────────────
 // Imported dynamically to avoid build failure if not installed.
@@ -953,6 +1000,7 @@ export default function ExamScreen() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
+    <ExamErrorBoundary>
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
 
       {/* ── Top bar ── */}
@@ -1189,5 +1237,6 @@ export default function ExamScreen() {
         </div>
       )}
     </div>
+    </ExamErrorBoundary>
   );
 }

@@ -215,3 +215,34 @@ export interface TopicAnalysisItem {
   score: number;
   max_score: number;
 }
+
+/* ── Result / Solution schemas (Part 11) ── */
+export interface ViolationSummary {
+  event_type: string;
+  count: number;
+}
+
+export interface SolutionItem {
+  qno: number;
+  question_type: "MCQ" | "MSQ" | "NAT";
+  marks: number;
+  section: string;
+  section_name: string;
+  topic: string;
+  stem_tex: string;
+  code_snippet: string | null;
+  code_language: string | null;
+  choices: string[] | null;
+  user_answer: AnyAnswer | null;
+  correct_answer: MCQAnswer | MSQAnswer | NATAnswer;
+  is_correct: boolean;
+  score: number;
+  solution_tex: string;
+}
+
+/** Full graded attempt — used by GET /attempts/{id} and ResultScreen */
+export interface AttemptDetailResponse extends AttemptSubmitResponse {
+  negative_marks: number;
+  violations: ViolationSummary[];
+  solutions: SolutionItem[];
+}
