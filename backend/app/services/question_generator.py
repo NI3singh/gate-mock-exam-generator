@@ -167,19 +167,29 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
     # ── 5. Store questions in question_bank ──
     stored_ids = await _store_questions(db, all_questions, exam)
 
+    # FIX: Tag each question dict with its stored UUID BEFORE assembly.
+    # stored_ids[i] corresponds to all_questions[i] by position.
+    # assemble_exam returns `selected` which is a subset of all_questions
+    # in a different order. We must carry the ID through via the dict itself,
+    # not by positional index after the fact.
+    for i, q in enumerate(all_questions):
+        q["_stored_id"] = str(stored_ids[i])
+
     # ── 6. Assemble exam ──
     question_order, selected = assemble_exam(all_questions, exam.paper)
 
-    # Map question_order IDs to stored UUIDs
+    # Map each question_order entry to the correct stored UUID via the
+    # corresponding entry in `selected` (same positional order).
     for i, entry in enumerate(question_order):
-        if i < len(stored_ids):
-            entry["question_id"] = str(stored_ids[i])
+        if i < len(selected):
+            entry["question_id"] = selected[i].get("_stored_id", "")
 
     summary = compute_marks_summary(question_order)
     logger.info(f"Exam assembled: {summary}")
 
     # ── 7. Update exam row ──
-    exam.question_ids = [str(qid) for qid in stored_ids[: len(selected)]]
+    # question_ids = ordered list of UUID strings matching question_order
+    exam.question_ids = [entry["question_id"] for entry in question_order]
     exam.question_order = question_order
     exam.status = "generated"
     exam.generation_progress = {

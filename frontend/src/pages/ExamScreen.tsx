@@ -23,6 +23,13 @@ import { useEffect, useState, useCallback, useMemo, useRef, Component, ReactNode
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
+// ── Static imports — always available on first render ─────────────────────────
+import katex from "katex";
+import "katex/dist/katex.min.css";
+import Prism from "prismjs";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-c";
+
 import api from "../services/api";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import type {
@@ -85,31 +92,6 @@ class ExamErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
   }
 }
 
-// ── KaTeX ─────────────────────────────────────────────────────────────────────
-// Imported dynamically to avoid build failure if not installed.
-// Run: npm install katex @types/katex
-let katex: any = null;
-try {
-  // @ts-ignore
-  katex = await import("katex").then((m) => m.default ?? m);
-} catch {
-  // katex not installed — math will display as raw text
-}
-
-// ── Prism.js ──────────────────────────────────────────────────────────────────
-// Run: npm install prismjs @types/prismjs
-let Prism: any = null;
-try {
-  // @ts-ignore
-  Prism = await import("prismjs").then((m) => m.default ?? m);
-  // @ts-ignore
-  await import("prismjs/components/prism-python");
-  // @ts-ignore
-  await import("prismjs/components/prism-c");
-} catch {
-  // prismjs not installed — code will display without highlighting
-}
-
 // ── Status colours ─────────────────────────────────────────────────────────────
 
 const STATUS_BG: Record<QuestionStatus, string> = {
@@ -132,7 +114,6 @@ const STATUS_LEGEND: { status: QuestionStatus; label: string; bg: string }[] = [
 
 function MathText({ text }: { text: string }) {
   const rendered = useMemo(() => {
-    if (!katex) return null;
     try {
       // Split on $$...$$ (display) then $...$ (inline)
       const parts: Array<{ type: "text" | "display" | "inline"; content: string }> = [];
@@ -211,7 +192,7 @@ function MathText({ text }: { text: string }) {
     );
   }
 
-  // Fallback: plain text if katex not available
+  // Fallback: plain text
   return <span className="leading-relaxed whitespace-pre-wrap">{text}</span>;
 }
 
@@ -679,7 +660,10 @@ export default function ExamScreen() {
   }, [responses, questionStatuses, saveAttempt]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
-  const questions = exam?.questions ?? [];
+  const questions = useMemo(
+    () => [...(exam?.questions ?? [])].sort((a, b) => a.qno - b.qno),
+    [exam?.questions]
+  );
 
   const currentQuestion = useMemo(
     () => questions.find((q) => q.qno === currentQno) ?? null,
@@ -886,7 +870,6 @@ export default function ExamScreen() {
   }, [currentQno]);
 
   const handleSaveAndNext = useCallback(() => {
-    // If no answer yet for MCQ/MSQ, mark as not_answered (already done by markVisited)
     const nextQno = currentQno + 1;
     if (nextQno <= questions.length) {
       setCurrentQno(nextQno);

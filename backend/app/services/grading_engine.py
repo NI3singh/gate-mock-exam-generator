@@ -89,13 +89,21 @@ async def grade_attempt(db: AsyncSession, attempt_id: str) -> dict[str, Any]:
     if exam is None:
         raise ValueError(f"Exam {attempt.exam_id} not found")
 
-    question_order: list[str] = exam.question_order or []
+    # FIX: question_order is stored as list[dict] e.g.
+    # [{"qno": 1, "question_id": "uuid-str", "marks": 1, ...}, ...]
+    # Extract the string UUID from each entry.
+    question_order_raw: list = exam.question_order or []
+    question_order: list[str] = [
+        entry["question_id"]
+        for entry in question_order_raw
+        if isinstance(entry, dict) and entry.get("question_id")
+    ]
+
     responses: dict[str, Any] = attempt.responses or {}
 
     # 3. Fetch all question bank rows for this exam (in one query)
-    question_ids = question_order
     q_result = await db.execute(
-        select(QuestionBank).where(QuestionBank.id.in_(question_ids))
+        select(QuestionBank).where(QuestionBank.id.in_(question_order))
     )
     questions: list[QuestionBank] = q_result.scalars().all()
     question_map: dict[str, QuestionBank] = {str(q.id): q for q in questions}
@@ -108,7 +116,7 @@ async def grade_attempt(db: AsyncSession, attempt_id: str) -> dict[str, Any]:
 
     # Breakdown by section (GA / Subject)
     section_scores: dict[str, dict[str, Any]] = {
-        "GA":    {"correct": 0, "wrong": 0, "unanswered": 0, "score": 0.0, "max_score": 0},
+        "GA":      {"correct": 0, "wrong": 0, "unanswered": 0, "score": 0.0, "max_score": 0},
         "Subject": {"correct": 0, "wrong": 0, "unanswered": 0, "score": 0.0, "max_score": 0},
     }
 

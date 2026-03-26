@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 import io
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -215,8 +216,17 @@ async def get_attempt_detail(
             detail="Exam not found.",
         )
 
+    # FIX: question_order is stored as list[dict] e.g.
+    # [{"qno": 1, "question_id": "uuid-str", "marks": 1, ...}, ...]
+    # Extract the string UUID from each entry before querying the DB.
+    question_order_raw: list = exam.question_order or []
+    question_order: list[str] = [
+        entry["question_id"]
+        for entry in question_order_raw
+        if isinstance(entry, dict) and entry.get("question_id")
+    ]
+
     # Fetch all question bank rows for this exam
-    question_order: list[str] = exam.question_order or []
     q_result = await db.execute(
         select(QuestionBank).where(QuestionBank.id.in_(question_order))
     )
@@ -225,7 +235,7 @@ async def get_attempt_detail(
 
     responses: dict[str, Any] = attempt.responses or {}
 
-    # Build solutions list
+    # Build solutions list (preserve question_order ordering)
     solutions: list[SolutionItem] = []
     for idx, q_id in enumerate(question_order):
         q: QuestionBank | None = question_map.get(q_id)
@@ -234,7 +244,7 @@ async def get_attempt_detail(
         user_answer = responses.get(q_id)
         correct_answer = q.answer
 
-        # Determine is_correct
+        # Determine is_correct and score for this question
         is_correct = False
         score_for_q = 0.0
         if q.question_type == "MCQ":
@@ -280,14 +290,14 @@ async def get_attempt_detail(
             )
         )
 
-    # Compute negative marks (MCQ wrong answers)
+    # Compute negative marks (MCQ wrong answers only)
     negative_marks = 0.0
     for sol in solutions:
         if sol.question_type == "MCQ" and not sol.is_correct and sol.user_answer is not None:
             negative_marks += round(sol.marks / 3, 6)
     negative_marks = round(negative_marks, 6)
 
-    # Group violations by type
+    # Group violations by event type
     events_log: list[dict] = list(attempt.events_log or [])
     violation_map: dict[str, int] = {}
     for evt in events_log:
