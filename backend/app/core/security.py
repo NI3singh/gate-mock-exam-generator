@@ -47,9 +47,12 @@ async def get_current_user(
 ) -> User:
     """
     Look up the User row that matches the Firebase UID from the JWT.
-    Returns 401 if the user has not called /auth/register yet.
+    If the row is missing in PostgreSQL but the Firebase token is valid,
+    lazily create it so the same Firebase account works across environments.
     """
     firebase_uid: str = decoded["uid"]
+    email: str = decoded.get("email", "")
+    display_name: str | None = decoded.get("name")
 
     result = await db.execute(
         select(User).where(User.firebase_uid == firebase_uid)
@@ -57,9 +60,34 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not registered. Please call POST /api/v1/auth/register first.",
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Firebase token is missing the user's email claim.",
+            )
+
+        user = User(
+            firebase_uid=firebase_uid,
+            email=email,
+            display_name=display_name,
         )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    updated = False
+
+    if email and user.email != email:
+        user.email = email
+        updated = True
+
+    if display_name and not user.display_name:
+        user.display_name = display_name
+        updated = True
+
+    if updated:
+        await db.commit()
+        await db.refresh(user)
 
     return user

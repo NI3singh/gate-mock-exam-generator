@@ -7,10 +7,10 @@ export default function ProtectedRoute({
 }: {
   children: React.ReactNode;
 }) {
-  const { firebaseUser, loading } = useAuth();
+  const { firebaseUser, dbUser, loading } = useAuth();
 
   if (loading) return <LoadingSpinner fullScreen />;
-  if (!firebaseUser) return <Navigate to="/login" replace />;
+  if (!firebaseUser || !dbUser) return <Navigate to="/login" replace />;
 
   return <>{children}</>;
 }

@@ -3,14 +3,16 @@ Thin wrapper around the Firebase Admin SDK.
 Initialises the SDK once and exposes a token-verification helper.
 """
 
-import os
+import logging
 from pathlib import Path
-from app.core.config import settings
 
 import firebase_admin
 from firebase_admin import auth, credentials
 
+from app.core.config import settings
+
 _firebase_app = None
+logger = logging.getLogger(__name__)
 
 
 def init_firebase() -> None:
@@ -44,9 +46,11 @@ def verify_id_token(token: str) -> dict:
     Raises ``ValueError`` on any verification failure.
     """
     try:
-        decoded = auth.verify_id_token(token)
+        decoded = auth.verify_id_token(token, clock_skew_seconds=60)
         return decoded
     except firebase_admin.exceptions.FirebaseError as exc:
+        logger.warning("Firebase token verification failed: %s", exc)
         raise ValueError(f"Firebase token verification failed: {exc}")
     except Exception as exc:
+        logger.warning("Invalid Firebase token: %s", exc)
         raise ValueError(f"Invalid token: {exc}")

@@ -34,6 +34,27 @@ async def register(
     )
     existing = result.scalar_one_or_none()
     if existing is not None:
+        updated = False
+
+        if email and existing.email != email:
+            existing.email = email
+            updated = True
+
+        if body.display_name is not None and existing.display_name != body.display_name:
+            existing.display_name = body.display_name
+            updated = True
+
+        if (
+            body.preferred_paper is not None
+            and existing.preferred_paper != body.preferred_paper
+        ):
+            existing.preferred_paper = body.preferred_paper
+            updated = True
+
+        if updated:
+            await db.commit()
+            await db.refresh(existing)
+
         return existing
 
     user = User(
