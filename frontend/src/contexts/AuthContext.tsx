@@ -5,6 +5,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import axios from "axios";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -26,25 +27,85 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   /* ── Fetch the PostgreSQL profile for the signed-in user ── */
-  const fetchProfile = useCallback(async (): Promise<DbUser | null> => {
-    try {
-      const { data } = await api.get<DbUser>("/auth/me");
+  const getAuthHeaders = useCallback(async (user: FirebaseUser) => {
+    const token = await user.getIdToken(true);
+    return { Authorization: `Bearer ${token}` };
+  }, []);
+
+  const registerProfile = useCallback(
+    async (
+      user: FirebaseUser,
+      profile?: {
+        displayName?: string | null;
+        preferredPaper?: DbUser["preferred_paper"];
+      }
+    ): Promise<DbUser> => {
+      const headers = await getAuthHeaders(user);
+      const fallbackDisplayName =
+        profile?.displayName?.trim() ||
+        user.displayName?.trim() ||
+        user.email?.split("@")[0] ||
+        null;
+
+      const { data } = await api.post<DbUser>(
+        "/auth/register",
+        {
+          display_name: fallbackDisplayName,
+          preferred_paper: profile?.preferredPaper ?? null,
+        },
+        { headers }
+      );
+
       setDbUser(data);
       return data;
-    } catch {
-      setDbUser(null);
-      return null;
-    }
-  }, []);
+    },
+    [getAuthHeaders]
+  );
+
+  const syncProfile = useCallback(
+    async (user: FirebaseUser): Promise<DbUser> => {
+      const headers = await getAuthHeaders(user);
+
+      try {
+        const { data } = await api.get<DbUser>("/auth/me", { headers });
+        setDbUser(data);
+        return data;
+      } catch (error) {
+        const detail =
+          axios.isAxiosError(error) &&
+          typeof error.response?.data?.detail === "string"
+            ? error.response.data.detail
+            : "";
+
+        const shouldRegister =
+          axios.isAxiosError(error) &&
+          error.response?.status === 401 &&
+          detail.includes("User not registered");
+
+        if (!shouldRegister) {
+          setDbUser(null);
+          throw error;
+        }
+
+        return registerProfile(user);
+      }
+    },
+    [getAuthHeaders, registerProfile]
+  );
 
   /* ── Listen for Firebase auth-state changes ── */
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
       setFirebaseUser(user);
 
       if (user) {
         // User is signed-in → try to load their DB profile
-        await fetchProfile();
+        try {
+          await syncProfile(user);
+        } catch {
+          setDbUser(null);
+        }
       } else {
         setDbUser(null);
       }
@@ -53,8 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [syncProfile]);
 
   /* ── Signup (Firebase + backend registration) ── */
   const signup = useCallback(
@@ -64,33 +124,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFirebaseUser(cred.user);
 
       // 2. Register in our PostgreSQL database
-      const token = await cred.user.getIdToken();
-      const { data } = await api.post<DbUser>(
-        "/auth/register",
-        { display_name: displayName },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setDbUser(data);
+      try {
+        await registerProfile(cred.user, { displayName });
+      } catch (error) {
+        await signOut(auth);
+        setFirebaseUser(null);
+        setDbUser(null);
+        throw error;
+      }
     },
-    []
+    [registerProfile]
   );
 
   /* ── Login ── */
-  const login = useCallback(async (email: string, password: string) => {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    setFirebaseUser(cred.user);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      setFirebaseUser(cred.user);
 
-    // Eagerly fetch profile instead of waiting for onAuthStateChanged
-    const token = await cred.user.getIdToken();
-    try {
-      const { data } = await api.get<DbUser>("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDbUser(data);
-    } catch {
-      /* profile will arrive via onAuthStateChanged fallback */
-    }
-  }, []);
+      try {
+        await syncProfile(cred.user);
+      } catch (error) {
+        await signOut(auth);
+        setFirebaseUser(null);
+        setDbUser(null);
+        throw error;
+      }
+    },
+    [syncProfile]
+  );
 
   /* ── Logout ── */
   const logout = useCallback(async () => {

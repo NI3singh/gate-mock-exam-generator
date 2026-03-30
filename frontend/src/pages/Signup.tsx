@@ -6,7 +6,7 @@ import Navbar from "../components/layout/Navbar";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 
 export default function Signup() {
-  const { firebaseUser, loading, signup } = useAuth();
+  const { dbUser, loading, signup } = useAuth();
   const navigate = useNavigate();
 
   const [displayName, setDisplayName] = useState("");
@@ -17,7 +17,7 @@ export default function Signup() {
   const [error, setError] = useState("");
 
   if (loading) return <LoadingSpinner fullScreen />;
-  if (firebaseUser) return <Navigate to="/dashboard" replace />;
+  if (dbUser) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

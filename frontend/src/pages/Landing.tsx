@@ -41,10 +41,10 @@ const steps = [
 ];
 
 export default function Landing() {
-  const { firebaseUser, loading } = useAuth();
+  const { dbUser, loading } = useAuth();
 
   // If already logged in, go straight to dashboard
-  if (!loading && firebaseUser) return <Navigate to="/dashboard" replace />;
+  if (!loading && dbUser) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -7,6 +7,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAuthenticated = Boolean(firebaseUser && dbUser);
 
   const handleLogout = async () => {
     await logout();
@@ -27,7 +28,7 @@ export default function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* ── Logo ── */}
         <Link
-          to={firebaseUser ? "/dashboard" : "/"}
+          to={isAuthenticated ? "/dashboard" : "/"}
           className="flex items-center gap-2"
         >
           <span className="text-2xl">📝</span>
@@ -37,7 +38,7 @@ export default function Navbar() {
         </Link>
 
         {/* ── Right side ── */}
-        {firebaseUser ? (
+        {isAuthenticated ? (
           <div className="flex items-center gap-2">
             {/* Nav links — hidden on small screens */}
             <div className="hidden items-center gap-1 sm:flex">
