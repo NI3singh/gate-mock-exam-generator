@@ -670,6 +670,24 @@ export default function ExamScreen() {
     [questions, currentQno]
   );
 
+  const summaryForModal = useMemo(() => {
+    let answered = 0, notAnswered = 0, notVisited = 0, marked = 0;
+    for (const q of questions) {
+      const st = questionStatuses[q.id] ?? "not_visited";
+      if (st === "answered" || st === "answered_marked") answered++;
+      else if (st === "not_answered") notAnswered++;
+      else if (st === "marked") marked++;
+      else notVisited++;
+    }
+    return { answered, notAnswered, notVisited, marked };
+  }, [questions, questionStatuses]);
+
+  useEffect(() => {
+    if (questions.length === 0) return;
+    if (questions.some((q) => q.qno === currentQno)) return;
+    setCurrentQno(questions[0].qno);
+  }, [questions, currentQno]);
+
   // ── Mark question as visited when navigating to it ─────────────────────────
   const markVisited = useCallback(
     (question: QuestionItem) => {
@@ -937,7 +955,31 @@ export default function ExamScreen() {
     );
   }
 
-  if (!exam || !currentQuestion) {
+  if (!exam) {
+    return <LoadingSpinner fullScreen />;
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md p-8 bg-white rounded-xl border border-amber-200">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">Exam Has No Questions</h2>
+          <p className="text-sm text-amber-700 mb-6">
+            The exam was created, but no renderable questions were returned to the exam screen.
+          </p>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentQuestion) {
     return <LoadingSpinner fullScreen />;
   }
 
@@ -959,19 +1001,6 @@ export default function ExamScreen() {
   const currentStatus = questionStatuses[currentQuestion.id] ?? "not_visited";
   const isCurrentMarked =
     currentStatus === "marked" || currentStatus === "answered_marked";
-
-  // ── Summary counts for submit modal ────────────────────────────────────────
-  const summaryForModal = useMemo(() => {
-    let answered = 0, notAnswered = 0, notVisited = 0, marked = 0;
-    for (const q of questions) {
-      const st = questionStatuses[q.id] ?? "not_visited";
-      if (st === "answered" || st === "answered_marked") answered++;
-      else if (st === "not_answered") notAnswered++;
-      else if (st === "marked") marked++;
-      else notVisited++;
-    }
-    return { answered, notAnswered, notVisited, marked };
-  }, [questions, questionStatuses]);
 
   // ── Type badge ──────────────────────────────────────────────────────────────
   const typeBadgeClass =
