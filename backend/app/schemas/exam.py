@@ -79,6 +79,30 @@ class ExamSummary(BaseModel):
         from_attributes = True
 
 
+class ExamHistoryItem(BaseModel):
+    id: UUID
+    paper: str
+    scope: str
+    selected_topics: Optional[list[str]] = None
+    difficulty: str
+    total_questions: int
+    total_marks: int
+    duration_minutes: int
+    status: str
+    score: Optional[float] = None
+    max_score: int = 100
+    attempt_id: Optional[str] = None
+    created_at: datetime
+
+
+class ExamHistoryResponse(BaseModel):
+    items: list[ExamHistoryItem]
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
+
+
 # ── Part 8: Exam screen schemas ───────────────────────────────────────────────
 
 class QuestionItem(BaseModel):

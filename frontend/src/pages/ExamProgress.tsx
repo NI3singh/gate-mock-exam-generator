@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 
 import api from "../services/api";
 import Navbar from "../components/layout/Navbar";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 import ProgressBar from "../components/common/ProgressBar";
 
 /* ── Types ── */
@@ -52,7 +53,8 @@ export default function ExamProgress() {
 
     try {
       const { data } = await api.get<StatusResponse>(
-        `/exams/${examId}/status`
+        `/exams/${examId}/status`,
+        { suppressErrorToast: true }
       );
 
       setProgress(data.progress);
@@ -153,8 +155,8 @@ export default function ExamProgress() {
           <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
             {/* Header */}
             <div className="text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+              <div className="mx-auto flex justify-center">
+                <LoadingSpinner size="lg" text="GENERATING QUESTIONS" />
               </div>
               <h1 className="mt-6 text-2xl font-bold text-gray-900">
                 Generating Your Exam

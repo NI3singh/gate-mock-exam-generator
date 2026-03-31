@@ -13,7 +13,10 @@ import GenerateExam from "./pages/GenerateExam";
 import ExamProgress from "./pages/ExamProgress";
 import ExamScreen from "./pages/ExamScreen";
 import ResultScreen from "./pages/ResultScreen";
+import SolutionsReview from "./pages/SolutionsReview";
 import Analytics from "./pages/Analytics";
+import QuestionBankBrowser from "./pages/QuestionBankBrowser";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -77,12 +80,12 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* Part 11: Solutions (same screen, modal via ?solutions param) */}
+          {/* Part 12: Solutions Review Page */}
           <Route
             path="/result/:attemptId/solutions"
             element={
               <ProtectedRoute>
-                <ResultScreen />
+                <SolutionsReview />
               </ProtectedRoute>
             }
           />
@@ -94,6 +97,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/question-bank"
+            element={
+              <ProtectedRoute>
+                <QuestionBankBrowser />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

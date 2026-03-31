@@ -1,0 +1,94 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=0.7in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+\usepackage{lastpage}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{gateblue}{RGB}{30,58,138}
+\definecolor{gategray}{RGB}{71,85,105}
+\definecolor{gategreen}{RGB}{22,163,74}
+\definecolor{lightgray}{RGB}{241,245,249}
+\definecolor{codebg}{RGB}{248,250,252}
+
+\lstdefinestyle{gatecode}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=fullflexible,
+  frame=single,
+  keepspaces=true,
+  rulecolor=\color{lightgray},
+  showstringspaces=false,
+  tabsize=2
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textcolor{gategray}{GATE Mock Test Solution Key}}
+\fancyhead[R]{\textcolor{gategray}{Attempt {{ attempt_id | latex_text }}}}
+\fancyfoot[C]{\textcolor{gategray}{Page \thepage\ of \pageref*{LastPage}}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE \textbf{\textcolor{gateblue}{GATE Mock Test Solution Key}}}\\[0.5em]
+  {\large {{ paper | latex_text }} Paper \textbar\ {{ difficulty | latex_text | title }} Difficulty}\\[0.4em]
+  {\normalsize Attempt {{ attempt_id | latex_text }}}
+\end{center}
+
+\vspace{1em}
+
+\begin{tabular}{>{\bfseries}p{0.24\textwidth} p{0.26\textwidth} >{\bfseries}p{0.24\textwidth} p{0.18\textwidth}}
+Score & {{ score }} / {{ max_score }} & Duration & {{ duration_minutes }} min \\
+Questions & {{ total_questions }} & Total Marks & {{ total_marks }} \\
+Correct & {{ total_correct }} & Wrong & {{ total_wrong }} \\
+Unanswered & {{ total_unanswered }} & Exam ID & {{ exam_id | latex_text }} \\
+\end{tabular}
+
+\vspace{1.25em}
+\hrule
+\vspace{1em}
+
+{% for solution in solutions %}
+\section*{Question {{ solution.qno }}}
+\textbf{Type:} {{ solution.question_type | latex_text }} \hfill \textbf{Marks:} {{ solution.marks }}\\
+\textbf{Section:} {{ solution.section_name | latex_text }} \hfill \textbf{Topic:} {{ solution.topic | latex_text }}
+
+{{ solution.stem_tex }}
+
+{% if solution.code_snippet %}
+\begin{lstlisting}[style=gatecode{% if solution.listings_language %},language={{ solution.listings_language }}{% endif %}]
+{{ solution.code_snippet }}
+\end{lstlisting}
+{% endif %}
+
+{% if solution.choices %}
+\begin{enumerate}[label=\textbf{\Alph*.}, leftmargin=1.8em]
+{% for choice in solution.choices %}
+\item {{ choice.content_tex }}{% if choice.is_correct %} \hfill {\color{gategreen}\textbf{Correct}}{% endif %}
+{% endfor %}
+\end{enumerate}
+{% endif %}
+
+\textbf{Correct Answer:} {{ solution.correct_answer_tex }}
+
+\textbf{Step-by-step Solution:}
+
+{{ solution.solution_tex }}
+
+\vspace{0.8em}
+\hrule
+\vspace{0.4em}
+{% endfor %}
+
+\end{document}

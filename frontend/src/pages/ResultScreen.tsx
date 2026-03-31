@@ -3,17 +3,17 @@
  *
  * Part 10: Score hero, section/type breakdown, topic analysis, anti-cheat badge.
  * Part 11: GET /attempts/{id} (page refresh works), negative marks deducted,
- *   anti-cheat per-event breakdown, topic accuracy %, View Solutions,
+ *   anti-cheat per-event breakdown, topic accuracy %, View Solutions route,
  *   Download PDF button.
  */
 
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import api from "../services/api";
+import api, { getApiErrorMessage } from "../services/api";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import type { AttemptDetailResponse, SolutionItem } from "../types";
+import type { AttemptDetailResponse } from "../types";
 
 /* ── Violations badge component ─────────────────────────────────────────── */
 
@@ -50,145 +50,16 @@ function ViolationBadge({ violations }: { violations: { event_type: string; coun
   );
 }
 
-/* ── Solution review modal ──────────────────────────────────────────────── */
-
-function SolutionModal({
-  solutions,
-  onClose,
-}: {
-  solutions: SolutionItem[];
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 flex items-start justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-8 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Solution Review</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 text-2xl leading-none"
-          >
-            ×
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-8 py-5 space-y-6">
-          {solutions.map((sol) => (
-            <div
-              key={sol.qno}
-              className={`rounded-xl border-2 p-5 ${
-                sol.is_correct
-                  ? "border-green-300 bg-green-50"
-                  : sol.user_answer === null
-                  ? "border-gray-300 bg-gray-50"
-                  : "border-red-300 bg-red-50"
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-3 flex-wrap">
-                <span className="font-bold text-gray-800">Q{sol.qno}</span>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  sol.question_type === "MCQ"
-                    ? "bg-blue-100 text-blue-700"
-                    : sol.question_type === "MSQ"
-                    ? "bg-purple-100 text-purple-700"
-                    : "bg-orange-100 text-orange-700"
-                }`}>
-                  {sol.question_type}
-                </span>
-                <span className="text-xs text-gray-500">{sol.marks} mark{sol.marks > 1 ? "s" : ""}</span>
-                <span className="text-xs text-gray-500">{sol.section_name} · {sol.topic}</span>
-                <span className={`ml-auto text-sm font-bold ${
-                  sol.is_correct ? "text-green-600" : sol.user_answer === null ? "text-gray-500" : "text-red-600"
-                }`}>
-                  {sol.is_correct ? "✓ Correct" : sol.user_answer === null ? "— Unanswered" : "✗ Wrong"}
-                </span>
-              </div>
-              {/* Question */}
-              <p className="text-sm text-gray-800 mb-3 font-medium">{sol.stem_tex}</p>
-              {/* Choices */}
-              {sol.choices && sol.choices.length > 0 && (
-                <div className="space-y-1.5 mb-3">
-                  {sol.choices.map((choice, idx) => {
-                    const isCorrectChoice = sol.correct_answer &&
-                      (sol.question_type === "MCQ"
-                        ? (sol.correct_answer as { index: number }).index === idx
-                        : (sol.correct_answer as { indices: number[] }).indices.includes(idx));
-                    const isUserChoice = sol.user_answer &&
-                      (sol.question_type === "MCQ"
-                        ? (sol.user_answer as { index: number }).index === idx
-                        : (sol.user_answer as { indices: number[] }).indices.includes(idx));
-                    return (
-                      <div
-                        key={idx}
-                        className={`text-sm px-3 py-2 rounded-lg border flex items-center gap-2 ${
-                          isCorrectChoice
-                            ? "bg-green-100 border-green-400 text-green-800"
-                            : isUserChoice && !isCorrectChoice
-                            ? "bg-red-100 border-red-400 text-red-800"
-                            : "bg-gray-50 border-gray-200 text-gray-600"
-                        }`}
-                      >
-                        <span className="font-medium">{String.fromCharCode(65 + idx)}.</span>
-                        <span>{choice}</span>
-                        {isCorrectChoice && <span className="ml-auto text-green-600 font-bold">✓ Correct</span>}
-                        {isUserChoice && !isCorrectChoice && <span className="ml-auto text-red-600 font-bold">Your answer</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {/* User NAT answer */}
-              {sol.question_type === "NAT" && sol.user_answer && (
-                <div className="text-sm mb-2 px-3 py-2 bg-red-100 border border-red-300 rounded-lg text-red-800">
-                  Your answer: <strong>{String((sol.user_answer as unknown as { value: string }).value)}</strong>
-                </div>
-              )}
-              {/* Correct answer */}
-              {sol.question_type === "NAT" && (
-                <div className="text-sm mb-3 px-3 py-2 bg-green-100 border border-green-300 rounded-lg text-green-800">
-                  Correct answer: <strong>{String((sol.correct_answer as unknown as { value: number }).value)}</strong>
-                  {(sol.correct_answer as unknown as { tolerance?: number }).tolerance !== undefined &&
-                    ` (±${(sol.correct_answer as unknown as { value: number; tolerance: number }).tolerance})`}
-                </div>
-              )}
-              {/* Solution */}
-              {sol.solution_tex && (
-                <div className="mt-3 text-sm text-gray-700 italic bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                  💡 Solution: {sol.solution_tex}
-                </div>
-              )}
-              {/* Score */}
-              <div className="mt-3 text-right text-sm font-semibold text-gray-600">
-                Score: <span className={sol.score >= 0 ? "text-green-600" : "text-red-600"}>
-                  {sol.score >= 0 ? "+" : ""}{sol.score.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="px-8 py-4 border-t border-gray-200">
-          <button
-            onClick={onClose}
-            className="w-full py-2.5 rounded-xl bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ── Main ResultScreen ─────────────────────────────────────────────────── */
 
 export default function ResultScreen() {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   const [result, setResult] = useState<AttemptDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showSolutions, setShowSolutions] = useState(searchParams.get("solutions") === "1");
 
   useEffect(() => {
     if (!attemptId) return;
@@ -199,9 +70,8 @@ export default function ResultScreen() {
         );
         setResult(data);
       } catch (err: any) {
-        const msg = err?.response?.data?.detail ?? "Failed to load result.";
+        const msg = getApiErrorMessage(err, "Failed to load result.");
         setError(msg);
-        toast.error(msg);
       } finally {
         setLoading(false);
       }
@@ -212,23 +82,49 @@ export default function ResultScreen() {
   const handleDownloadPdf = async () => {
     if (!attemptId) return;
     try {
-      const response = await api.get(`/attempts/${attemptId}/pdf`, {
+      setDownloadingPdf(true);
+      const response = await api.get(`/attempts/${attemptId}/solutions-pdf`, {
         responseType: "blob",
+        suppressErrorToast: true,
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `GATE2026_Result_${attemptId}.pdf`);
+      link.setAttribute("download", `GATE2026_Solution_Key_${attemptId}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch {
-      toast.error("PDF download failed. Make sure weasyprint is installed on the backend.");
+    } catch (err: any) {
+      let message = getApiErrorMessage(
+        err,
+        "PDF download failed. Make sure the backend can reach LaTeX.online."
+      );
+      const data = err?.response?.data;
+
+      if (data instanceof Blob) {
+        try {
+          const text = await data.text();
+          const parsed = JSON.parse(text);
+          if (parsed?.detail) {
+            message = parsed.detail;
+          }
+        } catch {
+          // Keep the generic fallback when the error body is not JSON.
+        }
+      } else if (data?.detail) {
+        message = data.detail;
+      }
+
+      toast.error(message.length > 240 ? `${message.slice(0, 237)}...` : message);
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return <LoadingSpinner size="xl" text="LOADING RESULT" fullPage />;
+  }
 
   if (error || !result) {
     return (
@@ -259,14 +155,9 @@ export default function ResultScreen() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      {/* Solutions modal */}
-      {showSolutions && result.solutions && (
-        <SolutionModal
-          solutions={result.solutions}
-          onClose={() => setShowSolutions(false)}
-        />
+      {downloadingPdf && (
+        <LoadingSpinner size="xl" text="BUILDING SOLUTIONS PDF" fullPage />
       )}
-
       <div className="max-w-3xl mx-auto space-y-6">
 
         {/* ── Score Hero ── */}
@@ -457,7 +348,7 @@ export default function ResultScreen() {
           </button>
           {result.solutions && result.solutions.length > 0 && (
             <button
-              onClick={() => setShowSolutions(true)}
+              onClick={() => navigate(`/result/${attemptId}/solutions`)}
               className="px-8 py-3 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors"
             >
               View Solutions ({result.solutions.length})
@@ -465,9 +356,10 @@ export default function ResultScreen() {
           )}
           <button
             onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
             className="px-8 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition-colors"
           >
-            Download PDF
+            {downloadingPdf ? "Preparing PDF..." : "Download PDF"}
           </button>
         </div>
       </div>

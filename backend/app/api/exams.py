@@ -3,6 +3,9 @@ import uuid as uuid_module
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from math import ceil
+
+from fastapi import Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +20,8 @@ from app.schemas.exam import (
     ExamGenerateRequest,
     ExamGenerateResponse,
     ExamSummary,
+    ExamHistoryItem,
+    ExamHistoryResponse,
     ExamScreenResponse,
     QuestionItem,
     AttemptStartResponse,
@@ -127,10 +132,12 @@ async def generate_exam(
 
 @router.get(
     "",
-    response_model=list[ExamSummary],
-    summary="List all exams for the current user",
+    response_model=ExamHistoryResponse,
+    summary="List exams for the current user with pagination",
 )
 async def list_exams(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=50),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -140,21 +147,66 @@ async def list_exams(
         .order_by(Exam.created_at.desc())
     )
     exams = result.scalars().all()
-    return [
-        ExamSummary(
-            id=e.id,
-            paper=e.paper,
-            scope=e.scope,
-            selected_topics=e.selected_topics,
-            difficulty=e.difficulty,
-            total_questions=e.total_questions,
-            total_marks=e.total_marks,
-            duration_minutes=e.duration_minutes,
-            status=e.status,
-            created_at=e.created_at,
+
+    total = len(exams)
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_exams = exams[start:end]
+
+    exam_ids = [exam.id for exam in page_exams]
+    attempts_by_exam: dict[str, Attempt] = {}
+
+    if exam_ids:
+        attempts_result = await db.execute(
+            select(Attempt)
+            .where(
+                Attempt.exam_id.in_(exam_ids),
+                Attempt.user_id == user.id,
+            )
+            .order_by(Attempt.created_at.desc())
         )
-        for e in exams
-    ]
+        for attempt in attempts_result.scalars().all():
+            exam_id = str(attempt.exam_id)
+            if exam_id not in attempts_by_exam:
+                attempts_by_exam[exam_id] = attempt
+
+    return ExamHistoryResponse(
+        items=[
+            ExamHistoryItem(
+                id=exam.id,
+                paper=exam.paper,
+                scope=exam.scope,
+                selected_topics=exam.selected_topics,
+                difficulty=exam.difficulty,
+                total_questions=exam.total_questions,
+                total_marks=exam.total_marks,
+                duration_minutes=exam.duration_minutes,
+                status=exam.status,
+                score=(
+                    round(float(attempts_by_exam[str(exam.id)].score), 2)
+                    if str(exam.id) in attempts_by_exam
+                    and attempts_by_exam[str(exam.id)].score is not None
+                    else None
+                ),
+                max_score=(
+                    attempts_by_exam[str(exam.id)].max_score
+                    if str(exam.id) in attempts_by_exam
+                    else exam.total_marks
+                ),
+                attempt_id=(
+                    str(attempts_by_exam[str(exam.id)].id)
+                    if str(exam.id) in attempts_by_exam
+                    else None
+                ),
+                created_at=exam.created_at,
+            )
+            for exam in page_exams
+        ],
+        page=page,
+        page_size=page_size,
+        total=total,
+        total_pages=ceil(total / page_size) if total > 0 else 0,
+    )
 
 
 # ── GET /exams/{exam_id}/status ───────────────────────────────────────────────

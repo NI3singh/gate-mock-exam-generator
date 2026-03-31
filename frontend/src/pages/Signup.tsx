@@ -4,6 +4,12 @@ import toast from "react-hot-toast";
 import { useAuth } from "../hooks/useAuth";
 import Navbar from "../components/layout/Navbar";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import {
+  getDisplayNameValidationError,
+  getEmailValidationError,
+  getPasswordValidationError,
+  normalizeEmail,
+} from "../utils/validation";
 
 export default function Signup() {
   const { dbUser, loading, signup } = useAuth();
@@ -16,7 +22,9 @@ export default function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return <LoadingSpinner size="xl" text="AUTHENTICATING" fullPage />;
+  }
   if (dbUser) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: FormEvent) => {
@@ -24,12 +32,20 @@ export default function Signup() {
     setError("");
 
     /* ── Client-side validation ── */
-    if (!displayName.trim()) {
-      setError("Please enter your name.");
+    const nameError = getDisplayNameValidationError(displayName);
+    if (nameError) {
+      setError(nameError);
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    const normalizedEmail = normalizeEmail(email);
+    const emailError = getEmailValidationError(normalizedEmail);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+    const passwordError = getPasswordValidationError(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
     if (password !== confirmPassword) {
@@ -39,7 +55,7 @@ export default function Signup() {
 
     setSubmitting(true);
     try {
-      await signup(email, password, displayName.trim());
+      await signup(normalizedEmail, password, displayName.trim());
       toast.success("Account created successfully!");
       navigate("/dashboard");
     } catch (err: any) {
@@ -64,6 +80,9 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {submitting && (
+        <LoadingSpinner size="xl" text="CREATING ACCOUNT" fullPage />
+      )}
       <Navbar />
 
       <div className="flex items-center justify-center px-4 py-16">
@@ -92,6 +111,7 @@ export default function Signup() {
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
+                autoComplete="name"
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="John Doe"
               />
@@ -107,6 +127,7 @@ export default function Signup() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="you@example.com"
               />
@@ -122,6 +143,7 @@ export default function Signup() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="At least 6 characters"
               />
@@ -137,6 +159,7 @@ export default function Signup() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Re-enter password"
               />

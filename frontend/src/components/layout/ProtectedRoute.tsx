@@ -9,7 +9,9 @@ export default function ProtectedRoute({
 }) {
   const { firebaseUser, dbUser, loading } = useAuth();
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return <LoadingSpinner size="xl" text="CHECKING ACCESS" fullPage />;
+  }
   if (!firebaseUser || !dbUser) return <Navigate to="/login" replace />;
 
   return <>{children}</>;

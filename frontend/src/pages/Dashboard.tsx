@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
 
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
-import type { DashboardStats } from "../types";
+import type { DashboardStats, ExamHistoryItem, ExamHistoryResponse } from "../types";
 
 import Navbar from "../components/layout/Navbar";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import StatsCard from "../components/dashboard/StatsCard";
-import RecentExams from "../components/dashboard/RecentExams";
+import ExamHistoryList from "../components/dashboard/ExamHistoryList";
 import EmptyState from "../components/dashboard/EmptyState";
 
 /* ── SVG icons (inline for simplicity) ── */
@@ -51,41 +50,88 @@ function getGreeting(): string {
 export default function Dashboard() {
   const { dbUser } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [history, setHistory] = useState<ExamHistoryItem[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const fetchStats = async () => {
+    try {
+      const { data } = await api.get<DashboardStats>("/dashboard/summary");
+      setStats(data);
+    } catch {
+      setStats({
+        total_exams_taken: 0,
+        average_score: null,
+        best_score: null,
+        worst_score: null,
+        total_questions_attempted: 0,
+        recent_exams: [],
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
+    void fetchStats();
+  }, []);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
       try {
-        const { data } = await api.get<DashboardStats>("/dashboard/summary");
-        setStats(data);
+        setHistoryLoading(true);
+        const { data } = await api.get<ExamHistoryResponse>(
+          `/exams?page=${historyPage}&page_size=10`
+        );
+        setHistory(data.items);
+        setHistoryTotalPages(data.total_pages);
       } catch {
-        toast.error("Failed to load dashboard data");
-        // Set defaults so the page still renders
-        setStats({
-          total_exams_taken: 0,
-          average_score: null,
-          best_score: null,
-          worst_score: null,
-          total_questions_attempted: 0,
-          recent_exams: [],
-        });
+        setHistory([]);
+        setHistoryTotalPages(0);
       } finally {
-        setLoading(false);
+        setHistoryLoading(false);
       }
     };
 
-    fetchStats();
-  }, []);
+    fetchHistory();
+  }, [historyPage]);
 
-  if (!dbUser || loading) return <LoadingSpinner fullScreen />;
+  if (!dbUser || loading) {
+    return <LoadingSpinner size="xl" text="LOADING DASHBOARD" fullPage />;
+  }
 
-  const hasExams = stats !== null && stats.total_exams_taken > 0;
+  const hasExams = stats !== null && (stats.total_exams_taken > 0 || history.length > 0 || historyLoading);
+
+  const refreshHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      const { data } = await api.get<ExamHistoryResponse>(
+        `/exams?page=${historyPage}&page_size=10`
+      );
+
+      if (historyPage > 1 && data.items.length === 0) {
+        await fetchStats();
+        setHistoryPage((page) => Math.max(1, page - 1));
+        return;
+      }
+
+      setHistory(data.items);
+      setHistoryTotalPages(data.total_pages);
+      await fetchStats();
+    } catch {
+      // Keep the previous history on screen if a manual refresh fails.
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="app-shell mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* ── Greeting Row ── */}
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
@@ -140,6 +186,25 @@ export default function Dashboard() {
               </svg>
               View Analytics
             </Link>
+            <Link
+              to="/question-bank"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6.253v11.494m-9-5.747h18M5.25 7.5h13.5A2.25 2.25 0 0121 9.75v4.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 14.25v-4.5A2.25 2.25 0 015.25 7.5z"
+                />
+              </svg>
+              Question Bank
+            </Link>
           </div>
         </div>
 
@@ -186,7 +251,14 @@ export default function Dashboard() {
         {/* ── Main Content Area ── */}
         <div className="mt-10">
           {hasExams && stats ? (
-            <RecentExams exams={stats.recent_exams} />
+            <ExamHistoryList
+              exams={history}
+              page={historyPage}
+              totalPages={historyTotalPages}
+              loading={historyLoading}
+              onPageChange={setHistoryPage}
+              onDeleted={refreshHistory}
+            />
           ) : (
             <EmptyState />
           )}
@@ -200,7 +272,7 @@ export default function Dashboard() {
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-blue-900">
-                GATE 2026 Preparation
+                GATE 2027 Preparation
               </h3>
               <p className="mt-1 text-sm text-blue-700">
                 Each mock test follows the exact GATE pattern: 65 questions, 100

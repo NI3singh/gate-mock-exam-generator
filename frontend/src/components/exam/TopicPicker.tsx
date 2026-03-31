@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import api from "../../services/api";
+import api, { getApiErrorMessage } from "../../services/api";
 import type { TopicFlat, TopicListResponse } from "../../types";
 import LoadingSpinner from "../common/LoadingSpinner";
 
@@ -20,12 +20,16 @@ export default function TopicPicker({ paper, selected, onChange }: Props) {
       setLoading(true);
       try {
         const { data } = await api.get<TopicListResponse>(
-          `/syllabus/${paper}/topics`
+          `/syllabus/${paper}/topics`,
+          { suppressErrorToast: true }
         );
         setTopics(data.topics);
-      } catch {
+      } catch (error) {
         toast.error(
-          `Failed to load topics for ${paper}. Make sure syllabus data is loaded.`
+          getApiErrorMessage(
+            error,
+            `Failed to load topics for ${paper}. Make sure syllabus data is loaded.`
+          )
         );
         setTopics([]);
       } finally {

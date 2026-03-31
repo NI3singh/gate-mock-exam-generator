@@ -1,0 +1,24 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="10 14 80 66"
+  width="512"
+  height="512"
+  fill="none"
+>
+  <!--
+    Mock-Exam AI — Logo Mark
+    
+    The letter "M" whose right leg extends into a checkmark (✓)
+    M  = Mock-Exam
+    ✓  = Verified / Correct answer / AI-checked
+    
+    Single continuous stroke. Single colour.
+  -->
+  <path
+    d="M 22,68 L 37,30 L 50,54 L 63,30 L 71,48 L 82,26"
+    stroke="#1E40AF"
+    stroke-width="5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
