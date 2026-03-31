@@ -38,7 +38,7 @@ class Settings:
     LATEX_BUILD_URL: str = os.getenv(
         "LATEX_BUILD_URL", "https://latex.ytotech.com/builds/sync"
     )
-    LATEX_COMPILER: str = os.getenv("LATEX_COMPILER", "pdflatex")
+    LATEX_COMPILER: str = os.getenv("LATEX_COMPILER", "xelatex")
 
     # App
     APP_ENV: str = os.getenv("APP_ENV", "development")

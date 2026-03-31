@@ -201,12 +201,29 @@ def _extract_compile_error(response: httpx.Response) -> str:
             for key in ("detail", "message", "error"):
                 value = payload.get(key)
                 if value:
-                    return str(value)[:2000]
+                    if str(value) != "COMPILATION_ERROR":
+                        return str(value)[:2000]
 
             for key in ("logs", "output", "log", "stderr"):
                 value = payload.get(key)
                 if value:
                     return str(value)[:2000]
+
+            log_files = payload.get("log_files")
+            if isinstance(log_files, dict):
+                combined_logs = "\n".join(str(content) for content in log_files.values())
+                interesting_lines = [
+                    line.strip()
+                    for line in combined_logs.splitlines()
+                    if (
+                        "LaTeX Error" in line
+                        or "Unicode character" in line
+                        or line.startswith("!")
+                        or "Fatal error" in line
+                    )
+                ]
+                if interesting_lines:
+                    return " | ".join(interesting_lines[:5])[:2000]
 
         return json.dumps(payload)[:2000]
 

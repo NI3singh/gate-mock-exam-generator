@@ -2,6 +2,11 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import Navbar from "../components/layout/Navbar";
+import LoadingSpinner from "../components/common/LoadingSpinner";
+import {
+  getEmailValidationError,
+  normalizeEmail,
+} from "../utils/validation";
 
 export default function ForgotPassword() {
   const { resetPassword } = useAuth();
@@ -14,10 +19,19 @@ export default function ForgotPassword() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+
+    const normalizedEmail = normalizeEmail(email);
+    const emailError = getEmailValidationError(normalizedEmail);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      await resetPassword(email);
+      await resetPassword(normalizedEmail);
+      setEmail(normalizedEmail);
       setSent(true);
     } catch (err: any) {
       const code: string = err?.code ?? "";
@@ -33,6 +47,9 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {submitting && (
+        <LoadingSpinner size="lg" text="SENDING RESET LINK" fullPage />
+      )}
       <Navbar />
 
       <div className="flex items-center justify-center px-4 py-16">
@@ -75,6 +92,7 @@ export default function ForgotPassword() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
                     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     placeholder="you@example.com"
                   />

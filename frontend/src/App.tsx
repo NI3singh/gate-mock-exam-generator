@@ -15,6 +15,8 @@ import ExamScreen from "./pages/ExamScreen";
 import ResultScreen from "./pages/ResultScreen";
 import SolutionsReview from "./pages/SolutionsReview";
 import Analytics from "./pages/Analytics";
+import QuestionBankBrowser from "./pages/QuestionBankBrowser";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -95,6 +97,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/question-bank"
+            element={
+              <ProtectedRoute>
+                <QuestionBankBrowser />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

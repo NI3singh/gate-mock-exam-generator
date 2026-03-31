@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           display_name: fallbackDisplayName,
           preferred_paper: profile?.preferredPaper ?? null,
         },
-        { headers }
+        { headers, suppressErrorToast: true }
       );
 
       setDbUser(data);
@@ -67,7 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const headers = await getAuthHeaders(user);
 
       try {
-        const { data } = await api.get<DbUser>("/auth/me", { headers });
+        const { data } = await api.get<DbUser>("/auth/me", {
+          headers,
+          suppressErrorToast: true,
+        });
         setDbUser(data);
         return data;
       } catch (error) {

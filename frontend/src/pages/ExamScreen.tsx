@@ -30,7 +30,7 @@ import Prism from "prismjs";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-c";
 
-import api from "../services/api";
+import api, { getApiErrorMessage } from "../services/api";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import type {
   QuestionItem,
@@ -516,6 +516,7 @@ export default function ExamScreen() {
   const [questionStatuses, setQuestionStatuses] = useState<Record<string, QuestionStatus>>({});
   const [activeSection, setActiveSection] = useState<"all" | QuestionSection>("all");
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submittingExam, setSubmittingExam] = useState(false);
 
   // ── Timer state (Part 9) ───────────────────────────────────────────────────
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
@@ -537,7 +538,9 @@ export default function ExamScreen() {
         return;
       try {
         const payload: AttemptSaveRequest = { responses: resp, question_statuses: statuses };
-        await api.put(`/attempts/${attempt.attempt_id}/save`, payload);
+        await api.put(`/attempts/${attempt.attempt_id}/save`, payload, {
+          suppressErrorToast: true,
+        });
         lastSavedRef.current = { responses: resp, statuses };
       } catch {
         // Silent fail — auto-save should not interrupt the user
@@ -550,19 +553,26 @@ export default function ExamScreen() {
   const handleConfirmSubmit = useCallback(async () => {
     if (!attempt?.attempt_id) return;
     setShowSubmitModal(false);
+    setSubmittingExam(true);
     try {
-      await api.post(`/attempts/${attempt.attempt_id}/submit`);
+      await api.post(`/attempts/${attempt.attempt_id}/submit`, null, {
+        suppressErrorToast: true,
+      });
       navigate(`/result/${attempt.attempt_id}`);
     } catch (err: any) {
-      toast.error("Submission failed. Please try again.");
+      toast.error(getApiErrorMessage(err, "Submission failed. Please try again."));
+      setSubmittingExam(false);
     }
   }, [attempt?.attempt_id, navigate]);
 
   const handleAutoSubmit = useCallback(async () => {
     if (!attempt?.attempt_id) return;
     toast.error("Time's up! Submitting your exam...");
+    setSubmittingExam(true);
     try {
-      await api.post(`/attempts/${attempt.attempt_id}/submit`);
+      await api.post(`/attempts/${attempt.attempt_id}/submit`, null, {
+        suppressErrorToast: true,
+      });
       navigate(`/result/${attempt.attempt_id}`);
     } catch {
       // Fallback: navigate anyway so user sees result
@@ -575,10 +585,12 @@ export default function ExamScreen() {
     if (!examId) return;
     const load = async () => {
       try {
-        const { data } = await api.get<ExamScreenData>(`/exams/${examId}`);
+        const { data } = await api.get<ExamScreenData>(`/exams/${examId}`, {
+          suppressErrorToast: true,
+        });
         setExam(data);
       } catch (err: any) {
-        const msg = err?.response?.data?.detail ?? "Failed to load exam questions.";
+        const msg = getApiErrorMessage(err, "Failed to load exam questions.");
         setError(msg);
         toast.error(msg);
       } finally {
@@ -593,7 +605,9 @@ export default function ExamScreen() {
     if (!examId || loadingExam || error) return;
     const start = async () => {
       try {
-        const { data } = await api.post<AttemptData>(`/exams/${examId}/start`, {});
+        const { data } = await api.post<AttemptData>(`/exams/${examId}/start`, {}, {
+          suppressErrorToast: true,
+        });
         setAttempt(data);
 
         // Restore saved responses & statuses (resume)
@@ -608,7 +622,7 @@ export default function ExamScreen() {
           toast.success("Resuming your exam session.", { icon: "🔄" });
         }
       } catch (err: any) {
-        const msg = err?.response?.data?.detail ?? "Failed to start exam attempt.";
+        const msg = getApiErrorMessage(err, "Failed to start exam attempt.");
         setError(msg);
         toast.error(msg);
       } finally {
@@ -797,6 +811,8 @@ export default function ExamScreen() {
           event_type: eventType,
           detail: detail ?? null,
           timestamp: new Date().toISOString(),
+        }, {
+          suppressErrorToast: true,
         });
       } catch {
         // Silent — anti-cheat logging should not interrupt the user
@@ -934,7 +950,7 @@ export default function ExamScreen() {
   // ── Loading / error states ──────────────────────────────────────────────────
 
   if (loadingExam || loadingStart) {
-    return <LoadingSpinner fullScreen />;
+    return <LoadingSpinner size="xl" text="PREPARING YOUR EXAM" fullPage />;
   }
 
   if (error) {
@@ -956,7 +972,7 @@ export default function ExamScreen() {
   }
 
   if (!exam) {
-    return <LoadingSpinner fullScreen />;
+    return <LoadingSpinner size="xl" text="PREPARING YOUR EXAM" fullPage />;
   }
 
   if (questions.length === 0) {
@@ -980,7 +996,7 @@ export default function ExamScreen() {
   }
 
   if (!currentQuestion) {
-    return <LoadingSpinner fullScreen />;
+    return <LoadingSpinner size="xl" text="LOADING QUESTION" fullPage />;
   }
 
   // ── Current answer ──────────────────────────────────────────────────────────
@@ -1014,6 +1030,9 @@ export default function ExamScreen() {
   return (
     <ExamErrorBoundary>
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+      {submittingExam && (
+        <LoadingSpinner size="xl" text="SUBMITTING YOUR EXAM" fullPage />
+      )}
 
       {/* ── Top bar ── */}
       <div className="flex-shrink-0 bg-blue-800 text-white px-4 py-2 flex items-center justify-between shadow-md">

@@ -4,9 +4,8 @@ import katex from "katex";
 import Prism from "prismjs";
 import "prismjs/components/prism-c";
 import "prismjs/components/prism-python";
-import toast from "react-hot-toast";
 
-import api from "../services/api";
+import api, { getApiErrorMessage } from "../services/api";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import type {
   AttemptDetailResponse,
@@ -293,9 +292,8 @@ export default function SolutionsReview() {
         const { data } = await api.get<AttemptDetailResponse>(`/attempts/${attemptId}`);
         setResult(data);
       } catch (err: any) {
-        const message = err?.response?.data?.detail ?? "Failed to load solutions review.";
+        const message = getApiErrorMessage(err, "Failed to load solutions review.");
         setError(message);
-        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -350,7 +348,9 @@ export default function SolutionsReview() {
     setCurrentQno(solutions[currentIndex + 1].qno);
   }, [currentIndex, solutions]);
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return <LoadingSpinner size="xl" text="LOADING SOLUTIONS" fullPage />;
+  }
 
   if (error || !result) {
     return (

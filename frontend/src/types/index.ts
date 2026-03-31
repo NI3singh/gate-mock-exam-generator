@@ -23,6 +23,30 @@ export interface RecentExam {
   created_at: string;
 }
 
+export interface ExamHistoryItem {
+  id: string;
+  paper: string;
+  scope: string;
+  selected_topics: string[] | null;
+  difficulty: string;
+  total_questions: number;
+  total_marks: number;
+  duration_minutes: number;
+  status: string;
+  score: number | null;
+  max_score: number;
+  attempt_id: string | null;
+  created_at: string;
+}
+
+export interface ExamHistoryResponse {
+  items: ExamHistoryItem[];
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+}
+
 export interface DashboardStats {
   total_exams_taken: number;
   average_score: number | null;
@@ -30,6 +54,72 @@ export interface DashboardStats {
   worst_score: number | null;
   total_questions_attempted: number;
   recent_exams: RecentExam[];
+}
+
+export interface ScoreHistoryPoint {
+  attempt_id: string;
+  exam_id: string;
+  paper: string;
+  score: number;
+  max_score: number;
+  percentage: number;
+  submitted_at: string;
+  label: string;
+}
+
+export interface TopicPerformanceItem {
+  topic: string;
+  section_name: string;
+  total_questions: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  score: number;
+  max_score: number;
+  accuracy: number;
+  attempts_covered: number;
+}
+
+export interface AnalyticsDashboardData {
+  total_exams_taken: number;
+  average_score: number | null;
+  best_score: number | null;
+  worst_score: number | null;
+  total_questions_attempted: number;
+  improvement_percentage: number;
+  score_history: ScoreHistoryPoint[];
+  weak_topics: TopicPerformanceItem[];
+  strong_topics: TopicPerformanceItem[];
+}
+
+export interface TopicPerformanceResponse {
+  topics: TopicPerformanceItem[];
+}
+
+export interface QuestionBankBrowserItem {
+  id: string;
+  paper: string;
+  question_type: "MCQ" | "MSQ" | "NAT";
+  marks: number;
+  difficulty: string;
+  section_name: string;
+  topic: string;
+  stem_tex: string;
+  code_snippet: string | null;
+  code_language: string | null;
+  choices: string[] | null;
+  answer: Record<string, unknown>;
+  solution_tex: string;
+  estimated_time_seconds: number | null;
+  generated_at: string | null;
+}
+
+export interface QuestionBankBrowserResponse {
+  items: QuestionBankBrowserItem[];
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
 }
 
 /* ── Syllabus ── */

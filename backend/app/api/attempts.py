@@ -18,6 +18,7 @@ from app.schemas.attempt import (
     AttemptSubmitResponse,
     AttemptDetailResponse,
 )
+from app.services.analytics_service import refresh_user_analytics_safely
 from app.services.grading_engine import grade_attempt
 from app.services.attempt_detail_service import build_attempt_detail
 
@@ -168,6 +169,8 @@ async def submit_attempt(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Grading failed: {exc}",
         )
+
+    await refresh_user_analytics_safely(db, user.id)
 
     return AttemptSubmitResponse(**result_data)
 

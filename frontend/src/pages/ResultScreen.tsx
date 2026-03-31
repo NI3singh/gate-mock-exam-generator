@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import api from "../services/api";
+import api, { getApiErrorMessage } from "../services/api";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import type { AttemptDetailResponse } from "../types";
 
@@ -58,6 +58,7 @@ export default function ResultScreen() {
 
   const [result, setResult] = useState<AttemptDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,9 +70,8 @@ export default function ResultScreen() {
         );
         setResult(data);
       } catch (err: any) {
-        const msg = err?.response?.data?.detail ?? "Failed to load result.";
+        const msg = getApiErrorMessage(err, "Failed to load result.");
         setError(msg);
-        toast.error(msg);
       } finally {
         setLoading(false);
       }
@@ -82,8 +82,10 @@ export default function ResultScreen() {
   const handleDownloadPdf = async () => {
     if (!attemptId) return;
     try {
+      setDownloadingPdf(true);
       const response = await api.get(`/attempts/${attemptId}/solutions-pdf`, {
         responseType: "blob",
+        suppressErrorToast: true,
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
@@ -94,14 +96,35 @@ export default function ResultScreen() {
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      const message =
-        err?.response?.data?.detail ??
-        "PDF download failed. Make sure the backend can reach LaTeX.online.";
-      toast.error(message);
+      let message = getApiErrorMessage(
+        err,
+        "PDF download failed. Make sure the backend can reach LaTeX.online."
+      );
+      const data = err?.response?.data;
+
+      if (data instanceof Blob) {
+        try {
+          const text = await data.text();
+          const parsed = JSON.parse(text);
+          if (parsed?.detail) {
+            message = parsed.detail;
+          }
+        } catch {
+          // Keep the generic fallback when the error body is not JSON.
+        }
+      } else if (data?.detail) {
+        message = data.detail;
+      }
+
+      toast.error(message.length > 240 ? `${message.slice(0, 237)}...` : message);
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return <LoadingSpinner size="xl" text="LOADING RESULT" fullPage />;
+  }
 
   if (error || !result) {
     return (
@@ -132,6 +155,9 @@ export default function ResultScreen() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
+      {downloadingPdf && (
+        <LoadingSpinner size="xl" text="BUILDING SOLUTIONS PDF" fullPage />
+      )}
       <div className="max-w-3xl mx-auto space-y-6">
 
         {/* ── Score Hero ── */}
@@ -330,9 +356,10 @@ export default function ResultScreen() {
           )}
           <button
             onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
             className="px-8 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-100 transition-colors"
           >
-            Download PDF
+            {downloadingPdf ? "Preparing PDF..." : "Download PDF"}
           </button>
         </div>
       </div>

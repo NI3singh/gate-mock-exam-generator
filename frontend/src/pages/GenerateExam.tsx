@@ -13,6 +13,7 @@ import ScopeSelector from "../components/exam/ScopeSelector";
 import TopicPicker from "../components/exam/TopicPicker";
 import DifficultySelector from "../components/exam/DifficultySelector";
 import TypeRatioDisplay from "../components/exam/TypeRatioDisplay";
+import { getApiErrorMessage } from "../services/api";
 
 const DEFAULT_CONFIG: ExamConfig = {
   paper: "CS",
@@ -32,7 +33,9 @@ export default function GenerateExam() {
   }));
   const [submitting, setSubmitting] = useState(false);
 
-  if (!dbUser) return <LoadingSpinner fullScreen />;
+  if (!dbUser) {
+    return <LoadingSpinner size="xl" text="LOADING EXAM SETUP" fullPage />;
+  }
 
   const updateConfig = <K extends keyof ExamConfig>(
     key: K,
@@ -69,7 +72,8 @@ export default function GenerateExam() {
             config.scope === "topic" ? config.selected_topics : null,
           difficulty: config.difficulty,
           types_ratio: config.types_ratio,
-        }
+        },
+        { suppressErrorToast: true }
       );
 
       toast.success("Exam configuration saved!");
@@ -77,9 +81,7 @@ export default function GenerateExam() {
       // Navigate to progress page (Part 7 — placeholder for now)
       navigate(`/exam/${data.exam_id}/progress`);
     } catch (err: any) {
-      const detail =
-        err?.response?.data?.detail || "Failed to create exam. Please try again.";
-      toast.error(detail);
+      toast.error(getApiErrorMessage(err, "Failed to create exam. Please try again."));
     } finally {
       setSubmitting(false);
     }
@@ -87,9 +89,12 @@ export default function GenerateExam() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {submitting && (
+        <LoadingSpinner size="xl" text="PREPARING YOUR EXAM" fullPage />
+      )}
       <Navbar />
 
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="app-shell-form mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">

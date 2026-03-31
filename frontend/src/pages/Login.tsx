@@ -4,6 +4,10 @@ import toast from "react-hot-toast";
 import { useAuth } from "../hooks/useAuth";
 import Navbar from "../components/layout/Navbar";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import {
+  getEmailValidationError,
+  normalizeEmail,
+} from "../utils/validation";
 
 export default function Login() {
   const { dbUser, loading, login } = useAuth();
@@ -14,16 +18,30 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  if (loading) return <LoadingSpinner fullScreen />;
+  if (loading) {
+    return <LoadingSpinner size="xl" text="AUTHENTICATING" fullPage />;
+  }
   if (dbUser) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+
+    const normalizedEmail = normalizeEmail(email);
+    const emailError = getEmailValidationError(normalizedEmail);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      await login(email, password);
+      await login(normalizedEmail, password);
       toast.success("Welcome back!");
       navigate("/dashboard");
     } catch (err: any) {
@@ -49,6 +67,9 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {submitting && (
+        <LoadingSpinner size="xl" text="SIGNING YOU IN" fullPage />
+      )}
       <Navbar />
 
       <div className="flex items-center justify-center px-4 py-16">
@@ -77,6 +98,7 @@ export default function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="you@example.com"
               />
@@ -92,6 +114,7 @@ export default function Login() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Enter your password"
               />
