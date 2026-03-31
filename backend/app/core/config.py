@@ -34,6 +34,11 @@ class Settings:
     LLM_TEMPERATURE_VERIFY: float = float(os.getenv("LLM_TEMPERATURE_VERIFY", "0.1"))
     LLM_BATCH_SIZE: int = int(os.getenv("LLM_BATCH_SIZE", "5"))
 
+    # PDF / LaTeX
+    LATEX_BUILD_URL: str = os.getenv(
+        "LATEX_BUILD_URL", "https://latex.ytotech.com/builds/sync"
+    )
+    LATEX_COMPILER: str = os.getenv("LATEX_COMPILER", "pdflatex")
 
     # App
     APP_ENV: str = os.getenv("APP_ENV", "development")

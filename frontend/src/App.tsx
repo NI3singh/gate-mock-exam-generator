@@ -13,6 +13,7 @@ import GenerateExam from "./pages/GenerateExam";
 import ExamProgress from "./pages/ExamProgress";
 import ExamScreen from "./pages/ExamScreen";
 import ResultScreen from "./pages/ResultScreen";
+import SolutionsReview from "./pages/SolutionsReview";
 import Analytics from "./pages/Analytics";
 
 function App() {
@@ -77,12 +78,12 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* Part 11: Solutions (same screen, modal via ?solutions param) */}
+          {/* Part 12: Solutions Review Page */}
           <Route
             path="/result/:attemptId/solutions"
             element={
               <ProtectedRoute>
-                <ResultScreen />
+                <SolutionsReview />
               </ProtectedRoute>
             }
           />

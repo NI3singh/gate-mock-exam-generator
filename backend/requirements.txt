@@ -16,5 +16,6 @@ pydantic
 # Utilities
 python-dotenv
 httpx
+jinja2
 
 pgvector
