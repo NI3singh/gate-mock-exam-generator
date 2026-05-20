@@ -36,7 +36,7 @@ gate-mock-exam-generator/
 - PostgreSQL 14+
 - A Firebase project with Email/Password auth enabled
 - A valid Firebase service account JSON file
-- Nebius API key for question generation
+- API key for the active backend LLM provider used for question generation
 
 ## Backend Setup
 
@@ -61,13 +61,26 @@ Use this as a starting point:
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/gate_mock_test
 FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
+
+LLM_PROVIDER=nebius
+
 NEBIUS_API_KEY=your_nebius_api_key
 NEBIUS_BASE_URL=https://api.studio.nebius.com/v1/
 NEBIUS_MODEL=deepseek-ai/DeepSeek-V3.2
+
+OPENAI_API_KEY=
+OPENAI_MODEL=
+
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=
+
 LLM_MAX_TOKENS=16000
 LLM_TEMPERATURE=0.7
 LLM_TEMPERATURE_VERIFY=0.1
 LLM_BATCH_SIZE=5
+LLM_MAX_CONCURRENCY=2
+LLM_RETRIES=2
+LLM_TIMEOUT_SECONDS=120
 LATEX_BUILD_URL=https://latex.ytotech.com/builds/sync
 LATEX_COMPILER=xelatex
 APP_ENV=development
@@ -76,6 +89,10 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 
 Notes:
 
+- `LLM_PROVIDER` is backend-only and can be `nebius`, `openai`, or `anthropic`.
+- To switch providers, set `LLM_PROVIDER`, fill that provider's API key/model values, and restart the backend.
+- The frontend does not choose the AI provider. Inactive provider settings are ignored.
+- There is no automatic provider fallback; if the active provider fails or hits limits, generation fails with provider/model context in backend logs.
 - `LATEX_COMPILER=xelatex` is important because generated questions/solutions can contain Unicode math symbols.
 - In development, the backend currently allows all CORS origins.
 

@@ -1037,7 +1037,7 @@ export default function ExamScreen() {
       {/* ── Top bar ── */}
       <div className="flex-shrink-0 bg-blue-800 text-white px-4 py-2 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-bold">GATE 2026 Mock Test</span>
+          <span className="text-lg font-bold">GATE 2027 Mock Test</span>
           <span className="text-blue-300">|</span>
           <span className="text-sm text-blue-200">
             Paper: <strong className="text-white">{exam.paper}</strong>

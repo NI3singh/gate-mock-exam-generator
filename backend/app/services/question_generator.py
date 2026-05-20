@@ -33,7 +33,11 @@ from app.core.llm_config import (
 from app.models.exam import Exam
 from app.models.syllabus import Syllabus
 from app.models.question_bank import QuestionBank
-from app.services.llm_service import call_llm, extract_json_array
+from app.services.llm_service import (
+    call_llm,
+    extract_json_array,
+    get_active_llm_metadata,
+)
 from app.services.question_validator import validate_batch
 from app.services.exam_assembler import assemble_exam, compute_marks_summary
 
@@ -427,6 +431,7 @@ async def _store_questions(
 ) -> list[uuid.UUID]:
     """Store generated questions in the question_bank table."""
     stored_ids: list[uuid.UUID] = []
+    llm_metadata = get_active_llm_metadata()
 
     for q in questions:
         qb = QuestionBank(
@@ -445,7 +450,8 @@ async def _store_questions(
             answer=q["answer"],
             solution_tex=q["solution_tex"],
             estimated_time_seconds=q.get("estimated_time_seconds"),
-            llm_model=settings.NEBIUS_MODEL,
+            llm_provider=llm_metadata["provider"],
+            llm_model=llm_metadata["model"],
             llm_prompt_version="1.0",
             validated=True,
         )

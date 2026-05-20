@@ -5,13 +5,14 @@ Central LLM configuration constants.
 from app.core.config import settings
 
 LLM_CONFIG = {
-    "base_url": settings.NEBIUS_BASE_URL,
-    "api_key": settings.NEBIUS_API_KEY,
-    "model": settings.NEBIUS_MODEL,
+    "provider": settings.LLM_PROVIDER,
     "max_tokens": settings.LLM_MAX_TOKENS,
     "temperature": settings.LLM_TEMPERATURE,
     "temperature_verify": settings.LLM_TEMPERATURE_VERIFY,
     "batch_size": settings.LLM_BATCH_SIZE,
+    "max_concurrency": settings.LLM_MAX_CONCURRENCY,
+    "retries": settings.LLM_RETRIES,
+    "timeout_seconds": settings.LLM_TIMEOUT_SECONDS,
 }
 
 # GATE exam structure constants

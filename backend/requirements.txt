@@ -17,5 +17,7 @@ pydantic
 python-dotenv
 httpx
 jinja2
+openai
+anthropic
 
 pgvector

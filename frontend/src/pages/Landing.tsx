@@ -272,7 +272,7 @@ export default function Landing() {
             Create Free Account
           </Link>
         </div>
-      </section>
+      </section>{/*  */}
 
       {/* ────── FOOTER ────── */}
       <footer className="border-t border-gray-200 bg-white py-8 text-center text-sm text-gray-400">
