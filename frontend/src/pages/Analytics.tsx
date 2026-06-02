@@ -168,7 +168,7 @@ export default function Analytics() {
 
   if (!dashboard) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Navbar />
         <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="rounded-xl border border-red-200 bg-white p-10 text-center shadow-sm">
@@ -190,7 +190,7 @@ export default function Analytics() {
 
   if (dashboard.total_exams_taken === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Navbar />
 
         <main className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 lg:px-8">
@@ -235,7 +235,7 @@ export default function Analytics() {
         : "text-gray-600";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
 
       <main className="app-shell mx-auto px-4 py-8 sm:px-6 lg:px-8">

@@ -88,7 +88,7 @@ export default function GenerateExam() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {submitting && (
         <LoadingSpinner size="xl" text="PREPARING YOUR EXAM" fullPage />
       )}

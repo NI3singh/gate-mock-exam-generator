@@ -128,7 +128,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
 
       <main className="app-shell mx-auto px-4 py-8 sm:px-6 lg:px-8">
@@ -209,7 +209,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Stats Cards ── */}
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="animate-fade-in-up mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             label="Tests Taken"
             value={String(stats?.total_exams_taken ?? 0)}
@@ -264,7 +264,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* ── GATE 2026 Info Bar ── */}
+        {/* ── GATE 2027 Info Bar ── */}
         <div className="mt-10 rounded-xl border border-blue-100 bg-blue-50 p-6">
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
             <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">

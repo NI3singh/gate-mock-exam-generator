@@ -74,25 +74,25 @@ export default function Landing() {
       {/* ────── HERO ────── */}
       <section className="relative overflow-hidden px-4 pb-24 pt-20 sm:px-6 lg:px-8">
         {/* Decorative gradient blobs */}
-        <div className="pointer-events-none absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-blue-100 opacity-40 blur-3xl" />
-        <div className="pointer-events-none absolute -right-32 top-20 h-[400px] w-[400px] rounded-full bg-blue-50 opacity-50 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 left-1/2 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-blue-50 opacity-30 blur-3xl" />
+        <div className="animate-blob pointer-events-none absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-blue-100 opacity-40 blur-3xl" />
+        <div className="animate-blob-slow pointer-events-none absolute -right-32 top-20 h-[400px] w-[400px] rounded-full bg-indigo-100 opacity-50 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 left-1/2 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-sky-100 opacity-30 blur-3xl" />
 
         <div className="relative mx-auto max-w-4xl text-center">
 
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+          <h1 className="animate-fade-in-up text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
             Master{" "}
             <span className="bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
               GATE 2027
             </span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-gray-600">
+          <p className="animate-fade-in-up anim-delay-100 mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-gray-600">
             AI-powered, full-length mock tests for{" "}
             <strong>Computer Science</strong> and{" "}
             <strong>Data Science &amp; AI</strong>. Practice with questions that
             match real GATE style, difficulty, and format — every single time.
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="animate-fade-in-up anim-delay-200 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               to="/signup"
               className="group w-full rounded-lg bg-blue-600 px-8 py-3.5 text-base font-semibold text-white shadow-md shadow-blue-200 transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 sm:w-auto"
@@ -111,7 +111,7 @@ export default function Landing() {
           </div>
 
           {/* Stats row */}
-          <div className="mx-auto mt-16 grid max-w-xl grid-cols-4 gap-4">
+          <div className="animate-fade-in-up anim-delay-300 mx-auto mt-16 grid max-w-xl grid-cols-4 gap-4">
             {stats.map((s) => (
               <div key={s.label}>
                 <div className="text-2xl font-bold text-blue-600 sm:text-3xl">
@@ -276,7 +276,7 @@ export default function Landing() {
 
       {/* ────── FOOTER ────── */}
       <footer className="border-t border-gray-200 bg-white py-8 text-center text-sm text-gray-400">
-        © {new Date().getFullYear()} Mock-Exam AI · Built for GATE 2027
+        © Mock-Exam AI · Built for GATE 2027
         aspirants
       </footer>
     </div>

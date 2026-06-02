@@ -171,22 +171,16 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
     # ── 5. Store questions in question_bank ──
     stored_ids = await _store_questions(db, all_questions, exam)
 
-    # FIX: Tag each question dict with its stored UUID BEFORE assembly.
-    # stored_ids[i] corresponds to all_questions[i] by position.
-    # assemble_exam returns `selected` which is a subset of all_questions
-    # in a different order. We must carry the ID through via the dict itself,
-    # not by positional index after the fact.
+    # Tag each question dict with its stored UUID BEFORE assembly.
+    # stored_ids[i] corresponds to all_questions[i] by position (see
+    # _store_questions). assemble_exam reads this "_stored_id" off each
+    # selected dict, so every question_order entry comes out with the correct
+    # question_id — no positional post-fix required.
     for i, q in enumerate(all_questions):
         q["_stored_id"] = str(stored_ids[i])
 
     # ── 6. Assemble exam ──
-    question_order, selected = assemble_exam(all_questions, exam.paper)
-
-    # Map each question_order entry to the correct stored UUID via the
-    # corresponding entry in `selected` (same positional order).
-    for i, entry in enumerate(question_order):
-        if i < len(selected):
-            entry["question_id"] = selected[i].get("_stored_id", "")
+    question_order, _selected = assemble_exam(all_questions, exam.paper)
 
     summary = compute_marks_summary(question_order)
     logger.info(f"Exam assembled: {summary}")

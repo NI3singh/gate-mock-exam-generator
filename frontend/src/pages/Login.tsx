@@ -66,7 +66,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {submitting && (
         <LoadingSpinner size="xl" text="SIGNING YOU IN" fullPage />
       )}

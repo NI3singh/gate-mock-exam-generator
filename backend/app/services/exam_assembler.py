@@ -71,7 +71,10 @@ def assemble_exam(
     for i, q in enumerate(all_selected):
         question_order.append({
             "qno": i + 1,
-            "question_id": q.get("_id", ""),  # Will be replaced with actual UUID after storage
+            # `_stored_id` is set by the generator on every question dict before
+            # assembly (see question_generator._do_generation), so each entry
+            # carries its real question_bank UUID directly — no post-fix needed.
+            "question_id": q.get("_stored_id", ""),
             "marks": q["marks"],
             "type": q["question_type"],
             "section": "GA" if q.get("section_name") == "General Aptitude" else "Subject",

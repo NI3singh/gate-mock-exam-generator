@@ -3,6 +3,7 @@ import { Toaster } from "react-hot-toast";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import AmbientBackground from "./components/common/AmbientBackground";
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -22,6 +23,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <AmbientBackground />
         <Toaster
           position="top-right"
           toastOptions={{

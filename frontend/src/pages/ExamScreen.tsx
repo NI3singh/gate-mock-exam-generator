@@ -67,7 +67,7 @@ class ExamErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="font-exam min-h-screen flex items-center justify-center bg-gray-100">
           <div className="text-center max-w-lg p-8 bg-white rounded-2xl border border-red-200 shadow-lg">
             <div className="text-5xl mb-4">⚠️</div>
             <h2 className="text-xl font-bold text-gray-900 mb-3">Something went wrong</h2>
@@ -953,7 +953,7 @@ export default function ExamScreen() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="font-exam min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md p-8 bg-white rounded-xl border border-red-200">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Cannot Start Exam</h2>
@@ -975,7 +975,7 @@ export default function ExamScreen() {
 
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="font-exam min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md p-8 bg-white rounded-xl border border-amber-200">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Exam Has No Questions</h2>
@@ -1027,7 +1027,7 @@ export default function ExamScreen() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <ExamErrorBoundary>
-    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+    <div className="font-exam h-screen flex flex-col bg-gray-100 overflow-hidden">
       {submittingExam && (
         <LoadingSpinner size="xl" text="SUBMITTING YOUR EXAM" fullPage />
       )}

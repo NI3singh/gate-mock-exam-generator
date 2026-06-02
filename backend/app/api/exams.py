@@ -402,8 +402,9 @@ async def get_exam(
         )
 
     # ── 2. Build question_id → order_entry map ──
-    # question_order may have empty question_id strings (bug in assemble_exam
-    # where stored UUIDs don't update the original dicts), so fall back to
+    # Newly generated exams always carry valid question_id values in
+    # question_order. Legacy exams generated before that fix may still have
+    # empty question_id strings stored in the DB, so fall back to
     # exam.question_ids if question_order yields no valid IDs.
     question_order: list[dict] = exam.question_order or []
     id_to_order: dict[str, dict] = {
