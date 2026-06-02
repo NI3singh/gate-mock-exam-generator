@@ -110,7 +110,12 @@ async def build_attempt_detail(
                 qno=ref["qno"],
                 question_type=question.question_type,
                 marks=question.marks,
-                section="GA" if question.section_name.upper() == "GA" else "Subject",
+                section=(
+                    "GA"
+                    if (question.section_name or "").strip().lower()
+                    in ("ga", "general aptitude")
+                    else "Subject"
+                ),
                 section_name=question.section_name,
                 topic=question.topic,
                 stem_tex=question.stem_tex,

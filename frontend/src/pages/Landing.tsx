@@ -53,7 +53,7 @@ export default function Landing() {
   if (!loading && dbUser) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="grid-bg min-h-screen bg-gray-5">
+    <div className="grid-bg min-h-screen bg-gray-50">
       {/* Grid pattern background style */}
       <style>{`
         .grid-bg {

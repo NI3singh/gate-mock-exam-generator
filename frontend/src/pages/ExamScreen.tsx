@@ -384,7 +384,6 @@ function QuestionPalette({
   onNavigate,
   onSectionChange,
   onSubmit,
-  responses,
 }: {
   questions: QuestionItem[];
   questionStatuses: Record<string, QuestionStatus>;
@@ -393,7 +392,6 @@ function QuestionPalette({
   onNavigate: (qno: number) => void;
   onSectionChange: (section: "all" | QuestionSection) => void;
   onSubmit: () => void;
-  responses: Record<string, AnyAnswer>;
 }) {
   const gaQuestions = questions.filter((q) => q.section === "GA");
   const subjectQuestions = questions.filter((q) => q.section === "Subject");
@@ -485,7 +483,7 @@ function QuestionPalette({
       <div className="p-3 border-t border-gray-200">
         <button
           onClick={onSubmit}
-          className="w-full bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
         >
           Submit Exam
         </button>
@@ -1213,7 +1211,6 @@ export default function ExamScreen() {
           onNavigate={handleNavigateTo}
           onSectionChange={setActiveSection}
           onSubmit={handleSubmit}
-          responses={responses}
         />
       </div>
 

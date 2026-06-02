@@ -91,7 +91,7 @@ export default function Signup() {
             Create your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-500">
-            Start practicing for GATE 2026 today
+            Start practicing for GATE 2027 today
           </p>
 
           {error && (

@@ -93,8 +93,8 @@ export default function TopicPicker({ paper, selected, onChange }: Props) {
   if (topics.length === 0) {
     return (
       <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-700">
-        No topics found for {paper}. Please load syllabus data first via{" "}
-        <code className="rounded bg-yellow-100 px-1">POST /api/v1/admin/load-data</code>
+        No topics are available for {paper} yet. Please try again later or
+        contact support if this persists.
       </div>
     );
   }

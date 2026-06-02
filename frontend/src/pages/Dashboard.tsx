@@ -142,7 +142,7 @@ export default function Dashboard() {
             <p className="mt-1 text-gray-500">
               {hasExams
                 ? "Here's your preparation overview."
-                : "Let's kickstart your GATE 2026 preparation!"}
+                : "Let's kickstart your GATE 2027 preparation!"}
             </p>
           </div>
 

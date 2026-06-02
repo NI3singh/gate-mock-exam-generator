@@ -195,11 +195,16 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
     # question_ids = ordered list of UUID strings matching question_order
     exam.question_ids = [entry["question_id"] for entry in question_order]
     exam.question_order = question_order
+    # Reconcile the headline totals with what was actually assembled. If
+    # generation fell short of the standard 65 questions / 100 marks, scoring
+    # and percentages must use the real totals, not the optimistic defaults.
+    exam.total_questions = summary["total_questions"]
+    exam.total_marks = summary["total_marks"]
     exam.status = "generated"
     exam.generation_progress = {
         "total": GATE_TOTAL_QUESTIONS,
         "completed": len(question_order),
-        "failed": 0,
+        "failed": failed,
     }
     await db.commit()
 

@@ -142,8 +142,13 @@ async def grade_attempt(db: AsyncSession, attempt_id: str) -> dict[str, Any]:
         section = q.section_name  # "GA" or a subject section name
         topic = q.topic
 
-        # Determine section bucket
-        section_bucket = "GA" if section.upper() == "GA" else "Subject"
+        # Determine section bucket. GA questions are stored with
+        # section_name == "General Aptitude" (not "GA"), so normalize.
+        section_bucket = (
+            "GA"
+            if (section or "").strip().lower() in ("ga", "general aptitude")
+            else "Subject"
+        )
 
         # Grade per type
         if qtype == "MCQ":

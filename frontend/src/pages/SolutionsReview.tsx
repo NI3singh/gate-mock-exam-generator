@@ -356,7 +356,7 @@ export default function SolutionsReview() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="max-w-md rounded-xl border border-red-200 bg-white p-8 text-center">
-          <div className="mb-4 text-4xl">!</div>
+          <div className="mb-4 text-4xl">⚠️</div>
           <h2 className="mb-2 text-lg font-bold text-gray-900">Could Not Load Solutions</h2>
           <p className="mb-6 text-sm text-red-600">{error ?? "Unknown error"}</p>
           <button
@@ -374,7 +374,7 @@ export default function SolutionsReview() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="max-w-md rounded-xl border border-amber-200 bg-white p-8 text-center">
-          <div className="mb-4 text-4xl">!</div>
+          <div className="mb-4 text-4xl">⚠️</div>
           <h2 className="mb-2 text-lg font-bold text-gray-900">No Solutions Available</h2>
           <p className="mb-6 text-sm text-amber-700">
             This attempt did not return any solution data for review.
