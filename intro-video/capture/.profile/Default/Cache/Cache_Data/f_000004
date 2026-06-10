@@ -1,0 +1,324 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/App.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=d6f7282e"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+import { BrowserRouter, Routes, Route } from "/node_modules/.vite/deps/react-router-dom.js?v=d6f7282e";
+import { Toaster } from "/node_modules/.vite/deps/react-hot-toast.js?v=d6f7282e";
+import { AuthProvider } from "/src/contexts/AuthContext.tsx";
+import ProtectedRoute from "/src/components/layout/ProtectedRoute.tsx";
+import AmbientBackground from "/src/components/common/AmbientBackground.tsx";
+import Landing from "/src/pages/Landing.tsx";
+import Login from "/src/pages/Login.tsx";
+import Signup from "/src/pages/Signup.tsx";
+import ForgotPassword from "/src/pages/ForgotPassword.tsx";
+import Dashboard from "/src/pages/Dashboard.tsx";
+import GenerateExam from "/src/pages/GenerateExam.tsx";
+import ExamProgress from "/src/pages/ExamProgress.tsx";
+import ExamScreen from "/src/pages/ExamScreen.tsx";
+import ResultScreen from "/src/pages/ResultScreen.tsx";
+import SolutionsReview from "/src/pages/SolutionsReview.tsx";
+import Analytics from "/src/pages/Analytics.tsx";
+import QuestionBankBrowser from "/src/pages/QuestionBankBrowser.tsx";
+import NotFound from "/src/pages/NotFound.tsx";
+function App() {
+  return /* @__PURE__ */ jsxDEV(BrowserRouter, { children: /* @__PURE__ */ jsxDEV(AuthProvider, { children: [
+    /* @__PURE__ */ jsxDEV(AmbientBackground, {}, void 0, false, {
+      fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+      lineNumber: 45,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV(
+      Toaster,
+      {
+        position: "top-right",
+        toastOptions: {
+          duration: 4e3,
+          style: { background: "#363636", color: "#fff" }
+        }
+      },
+      void 0,
+      false,
+      {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 46,
+        columnNumber: 9
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(Routes, { children: [
+      /* @__PURE__ */ jsxDEV(Route, { path: "/", element: /* @__PURE__ */ jsxDEV(Landing, {}, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 56,
+        columnNumber: 36
+      }, this) }, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 56,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV(Route, { path: "/login", element: /* @__PURE__ */ jsxDEV(Login, {}, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 57,
+        columnNumber: 41
+      }, this) }, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 57,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV(Route, { path: "/signup", element: /* @__PURE__ */ jsxDEV(Signup, {}, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 58,
+        columnNumber: 42
+      }, this) }, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 58,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV(Route, { path: "/forgot-password", element: /* @__PURE__ */ jsxDEV(ForgotPassword, {}, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 59,
+        columnNumber: 51
+      }, this) }, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 59,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV(
+        Route,
+        {
+          path: "/dashboard",
+          element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(Dashboard, {}, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 66,
+            columnNumber: 17
+          }, this) }, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 65,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+          lineNumber: 62,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        Route,
+        {
+          path: "/generate-exam",
+          element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(GenerateExam, {}, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 74,
+            columnNumber: 17
+          }, this) }, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 73,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+          lineNumber: 70,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        Route,
+        {
+          path: "/exam/:examId/progress",
+          element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(ExamProgress, {}, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 82,
+            columnNumber: 17
+          }, this) }, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 81,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+          lineNumber: 78,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        Route,
+        {
+          path: "/exam/:examId",
+          element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(ExamScreen, {}, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 91,
+            columnNumber: 17
+          }, this) }, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 90,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+          lineNumber: 87,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        Route,
+        {
+          path: "/result/:attemptId",
+          element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(ResultScreen, {}, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 100,
+            columnNumber: 17
+          }, this) }, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 99,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+          lineNumber: 96,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        Route,
+        {
+          path: "/result/:attemptId/solutions",
+          element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(SolutionsReview, {}, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 109,
+            columnNumber: 17
+          }, this) }, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 108,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+          lineNumber: 105,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        Route,
+        {
+          path: "/analytics",
+          element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(Analytics, {}, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 117,
+            columnNumber: 17
+          }, this) }, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 116,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+          lineNumber: 113,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        Route,
+        {
+          path: "/question-bank",
+          element: /* @__PURE__ */ jsxDEV(ProtectedRoute, { children: /* @__PURE__ */ jsxDEV(QuestionBankBrowser, {}, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 125,
+            columnNumber: 17
+          }, this) }, void 0, false, {
+            fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+            lineNumber: 124,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+          lineNumber: 121,
+          columnNumber: 11
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(Route, { path: "*", element: /* @__PURE__ */ jsxDEV(NotFound, {}, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 129,
+        columnNumber: 36
+      }, this) }, void 0, false, {
+        fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+        lineNumber: 129,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+      lineNumber: 54,
+      columnNumber: 9
+    }, this)
+  ] }, void 0, true, {
+    fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+    lineNumber: 44,
+    columnNumber: 7
+  }, this) }, void 0, false, {
+    fileName: "D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx",
+    lineNumber: 43,
+    columnNumber: 5
+  }, this);
+}
+_c = App;
+export default App;
+var _c;
+$RefreshReg$(_c, "App");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("D:/AI-Mock/gate-mock-exam-generator/frontend/src/App.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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QUFJLFNBQVMsdUJBQUMsY0FBRDtBQUFBO0FBQUE7QUFBQTtBQUFBLGFBQVMsS0FBbEM7QUFBQTtBQUFBO0FBQUE7QUFBQSxhQUFzQztBQUFBLFNBM0V4QztBQUFBO0FBQUE7QUFBQTtBQUFBLFdBNEVBO0FBQUEsT0F0RkY7QUFBQTtBQUFBO0FBQUE7QUFBQSxTQXVGQSxLQXhGRjtBQUFBO0FBQUE7QUFBQTtBQUFBLFNBeUZBO0FBRUo7QUFBQ0MsS0E3RlFMO0FBK0ZULGVBQWVBO0FBQUksSUFBQUs7QUFBQSxhQUFBQSxJQUFBIiwibmFtZXMiOlsiQnJvd3NlclJvdXRlciIsIlJvdXRlcyIsIlJvdXRlIiwiVG9hc3RlciIsIkF1dGhQcm92aWRlciIsIlByb3RlY3RlZFJvdXRlIiwiQW1iaWVudEJhY2tncm91bmQiLCJMYW5kaW5nIiwiTG9naW4iLCJTaWdudXAiLCJGb3Jnb3RQYXNzd29yZCIsIkRhc2hib2FyZCIsIkdlbmVyYXRlRXhhbSIsIkV4YW1Qcm9ncmVzcyIsIkV4YW1TY3JlZW4iLCJSZXN1bHRTY3JlZW4iLCJTb2x1dGlvbnNSZXZpZXciLCJBbmFseXRpY3MiLCJRdWVzdGlvbkJhbmtCcm93c2VyIiwiTm90Rm91bmQiLCJBcHAiLCJkdXJhdGlvbiIsInN0eWxlIiwiYmFja2dyb3VuZCIsImNvbG9yIiwiX2MiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiQXBwLnRzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBCcm93c2VyUm91dGVyLCBSb3V0ZXMsIFJvdXRlIH0gZnJvbSBcInJlYWN0LXJvdXRlci1kb21cIjtcclxuaW1wb3J0IHsgVG9hc3RlciB9IGZyb20gXCJyZWFjdC1ob3QtdG9hc3RcIjtcclxuXHJcbmltcG9ydCB7IEF1dGhQcm92aWRlciB9IGZyb20gXCIuL2NvbnRleHRzL0F1dGhDb250ZXh0XCI7XHJcbmltcG9ydCBQcm90ZWN0ZWRSb3V0ZSBmcm9tIFwiLi9jb21wb25lbnRzL2xheW91dC9Qcm90ZWN0ZWRSb3V0ZVwiO1xyXG5pbXBvcnQgQW1iaWVudEJhY2tncm91bmQgZnJvbSBcIi4vY29tcG9uZW50cy9jb21tb24vQW1iaWVudEJhY2tncm91bmRcIjtcclxuXHJcbmltcG9ydCBMYW5kaW5nIGZyb20gXCIuL3BhZ2VzL0xhbmRpbmdcIjtcclxuaW1wb3J0IExvZ2luIGZyb20gXCIuL3BhZ2VzL0xvZ2luXCI7XHJcbmltcG9ydCBTaWdudXAgZnJvbSBcIi4vcGFnZXMvU2lnbnVwXCI7XHJcbmltcG9ydCBGb3Jnb3RQYXNzd29yZCBmcm9tIFwiLi9wYWdlcy9Gb3Jnb3RQYXNzd29yZFwiO1xyXG5pbXBvcnQgRGFzaGJvYXJkIGZyb20gXCIuL3BhZ2VzL0Rhc2hib2FyZFwiO1xyXG5pbXBvcnQgR2VuZXJhdGVFeGFtIGZyb20gXCIuL3BhZ2VzL0dlbmVyYXRlRXhhbVwiO1xyXG5pbXBvcnQgRXhhbVByb2dyZXNzIGZyb20gXCIuL3BhZ2VzL0V4YW1Qcm9ncmVzc1wiO1xyXG5pbXBvcnQgRXhhbVNjcmVlbiBmcm9tIFwiLi9wYWdlcy9FeGFtU2NyZWVuXCI7XHJcbmltcG9ydCBSZXN1bHRTY3JlZW4gZnJvbSBcIi4vcGFnZXMvUmVzdWx0U2NyZWVuXCI7XHJcbmltcG9ydCBTb2x1dGlvbnNSZXZpZXcgZnJvbSBcIi4vcGFnZXMvU29sdXRpb25zUmV2aWV3XCI7XHJcbmltcG9ydCBBbmFseXRpY3MgZnJvbSBcIi4vcGFnZXMvQW5hbHl0aWNzXCI7XHJcbmltcG9ydCBRdWVzdGlvbkJhbmtCcm93c2VyIGZyb20gXCIuL3BhZ2VzL1F1ZXN0aW9uQmFua0Jyb3dzZXJcIjtcclxuaW1wb3J0IE5vdEZvdW5kIGZyb20gXCIuL3BhZ2VzL05vdEZvdW5kXCI7XHJcblxyXG5mdW5jdGlvbiBBcHAoKSB7XHJcbiAgcmV0dXJuIChcclxuICAgIDxCcm93c2VyUm91dGVyPlxyXG4gICAgICA8QXV0aFByb3ZpZGVyPlxyXG4gICAgICAgIDxBbWJpZW50QmFja2dyb3VuZCAvPlxyXG4gICAgICAgIDxUb2FzdGVyXHJcbiAgICAgICAgICBwb3NpdGlvbj1cInRvcC1yaWdodFwiXHJcbiAgICAgICAgICB0b2FzdE9wdGlvbnM9e3tcclxuICAgICAgICAgICAgZHVyYXRpb246IDQwMDAsXHJcbiAgICAgICAgICAgIHN0eWxlOiB7IGJhY2tncm91bmQ6IFwiIzM2MzYzNlwiLCBjb2xvcjogXCIjZmZmXCIgfSxcclxuICAgICAgICAgIH19XHJcbiAgICAgICAgLz5cclxuXHJcbiAgICAgICAgPFJvdXRlcz5cclxuICAgICAgICAgIHsvKiBQdWJsaWMgcm91dGVzICovfVxyXG4gICAgICAgICAgPFJvdXRlIHBhdGg9XCIvXCIgZWxlbWVudD17PExhbmRpbmcgLz59IC8+XHJcbiAgICAgICAgICA8Um91dGUgcGF0aD1cIi9sb2dpblwiIGVsZW1lbnQ9ezxMb2dpbiAvPn0gLz5cclxuICAgICAgICAgIDxSb3V0ZSBwYXRoPVwiL3NpZ251cFwiIGVsZW1lbnQ9ezxTaWdudXAgLz59IC8+XHJcbiAgICAgICAgICA8Um91dGUgcGF0aD1cIi9mb3Jnb3QtcGFzc3dvcmRcIiBlbGVtZW50PXs8Rm9yZ290UGFzc3dvcmQgLz59IC8+XHJcblxyXG4gICAgICAgICAgey8qIFByb3RlY3RlZCByb3V0ZXMgKi99XHJcbiAgICAgICAgICA8Um91dGVcclxuICAgICAgICAgICAgcGF0aD1cIi9kYXNoYm9hcmRcIlxyXG4gICAgICAgICAgICBlbGVtZW50PXtcclxuICAgICAgICAgICAgICA8UHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgICAgICA8RGFzaGJvYXJkIC8+XHJcbiAgICAgICAgICAgICAgPC9Qcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgfVxyXG4gICAgICAgICAgLz5cclxuICAgICAgICAgIDxSb3V0ZVxyXG4gICAgICAgICAgICBwYXRoPVwiL2dlbmVyYXRlLWV4YW1cIlxyXG4gICAgICAgICAgICBlbGVtZW50PXtcclxuICAgICAgICAgICAgICA8UHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgICAgICA8R2VuZXJhdGVFeGFtIC8+XHJcbiAgICAgICAgICAgICAgPC9Qcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgfVxyXG4gICAgICAgICAgLz5cclxuICAgICAgICAgIDxSb3V0ZVxyXG4gICAgICAgICAgICBwYXRoPVwiL2V4YW0vOmV4YW1JZC9wcm9ncmVzc1wiXHJcbiAgICAgICAgICAgIGVsZW1lbnQ9e1xyXG4gICAgICAgICAgICAgIDxQcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgICAgIDxFeGFtUHJvZ3Jlc3MgLz5cclxuICAgICAgICAgICAgICA8L1Byb3RlY3RlZFJvdXRlPlxyXG4gICAgICAgICAgICB9XHJcbiAgICAgICAgICAvPlxyXG4gICAgICAgICAgey8qIFBhcnQgODogRXhhbSBTY3JlZW4gKi99XHJcbiAgICAgICAgICA8Um91dGVcclxuICAgICAgICAgICAgcGF0aD1cIi9leGFtLzpleGFtSWRcIlxyXG4gICAgICAgICAgICBlbGVtZW50PXtcclxuICAgICAgICAgICAgICA8UHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgICAgICA8RXhhbVNjcmVlbiAvPlxyXG4gICAgICAgICAgICAgIDwvUHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgIH1cclxuICAgICAgICAgIC8+XHJcbiAgICAgICAgICB7LyogUGFydCAxMDogUmVzdWx0IFNjcmVlbiAqL31cclxuICAgICAgICAgIDxSb3V0ZVxyXG4gICAgICAgICAgICBwYXRoPVwiL3Jlc3VsdC86YXR0ZW1wdElkXCJcclxuICAgICAgICAgICAgZWxlbWVudD17XHJcbiAgICAgICAgICAgICAgPFByb3RlY3RlZFJvdXRlPlxyXG4gICAgICAgICAgICAgICAgPFJlc3VsdFNjcmVlbiAvPlxyXG4gICAgICAgICAgICAgIDwvUHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgIH1cclxuICAgICAgICAgIC8+XHJcbiAgICAgICAgICB7LyogUGFydCAxMjogU29sdXRpb25zIFJldmlldyBQYWdlICovfVxyXG4gICAgICAgICAgPFJvdXRlXHJcbiAgICAgICAgICAgIHBhdGg9XCIvcmVzdWx0LzphdHRlbXB0SWQvc29sdXRpb25zXCJcclxuICAgICAgICAgICAgZWxlbWVudD17XHJcbiAgICAgICAgICAgICAgPFByb3RlY3RlZFJvdXRlPlxyXG4gICAgICAgICAgICAgICAgPFNvbHV0aW9uc1JldmlldyAvPlxyXG4gICAgICAgICAgICAgIDwvUHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgIH1cclxuICAgICAgICAgIC8+XHJcbiAgICAgICAgICA8Um91dGVcclxuICAgICAgICAgICAgcGF0aD1cIi9hbmFseXRpY3NcIlxyXG4gICAgICAgICAgICBlbGVtZW50PXtcclxuICAgICAgICAgICAgICA8UHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgICAgICA8QW5hbHl0aWNzIC8+XHJcbiAgICAgICAgICAgICAgPC9Qcm90ZWN0ZWRSb3V0ZT5cclxuICAgICAgICAgICAgfVxyXG4gICAgICAgICAgLz5cclxuICAgICAgICAgIDxSb3V0ZVxyXG4gICAgICAgICAgICBwYXRoPVwiL3F1ZXN0aW9uLWJhbmtcIlxyXG4gICAgICAgICAgICBlbGVtZW50PXtcclxuICAgICAgICAgICAgICA8UHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgICAgICA8UXVlc3Rpb25CYW5rQnJvd3NlciAvPlxyXG4gICAgICAgICAgICAgIDwvUHJvdGVjdGVkUm91dGU+XHJcbiAgICAgICAgICAgIH1cclxuICAgICAgICAgIC8+XHJcbiAgICAgICAgICA8Um91dGUgcGF0aD1cIipcIiBlbGVtZW50PXs8Tm90Rm91bmQgLz59IC8+XHJcbiAgICAgICAgPC9Sb3V0ZXM+XHJcbiAgICAgIDwvQXV0aFByb3ZpZGVyPlxyXG4gICAgPC9Ccm93c2VyUm91dGVyPlxyXG4gICk7XHJcbn1cclxuXHJcbmV4cG9ydCBkZWZhdWx0IEFwcDtcclxuIl0sImZpbGUiOiJEOi9BSS1Nb2NrL2dhdGUtbW9jay1leGFtLWdlbmVyYXRvci9mcm9udGVuZC9zcmMvQXBwLnRzeCJ9

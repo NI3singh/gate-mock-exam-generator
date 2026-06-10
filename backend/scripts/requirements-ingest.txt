@@ -1,0 +1,6 @@
+# Dependencies for the OFFLINE PYQ ingestion script only.
+# Deliberately kept out of backend/requirements.txt so the deployed backend
+# stays lean — install these just in the venv you run the script from:
+#     pip install -r requirements-ingest.txt
+pymupdf>=1.24
+anthropic   # already in backend/requirements.txt; listed for standalone venvs

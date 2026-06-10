@@ -103,7 +103,7 @@ async def generate_exam(
         scope=body.scope,
         selected_topics=body.selected_topics if body.scope == "topic" else None,
         difficulty=body.difficulty,
-        use_pyq_reference=False,
+        use_pyq_reference=body.use_pyq_reference,
         types_ratio={
             "MCQ": body.types_ratio.MCQ,
             "MSQ": body.types_ratio.MSQ,

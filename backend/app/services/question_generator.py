@@ -15,10 +15,12 @@ import asyncio
 import json
 import logging
 import math
+import random
+import time
 import uuid
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -33,6 +35,7 @@ from app.core.llm_config import (
 from app.models.exam import Exam
 from app.models.syllabus import Syllabus
 from app.models.question_bank import QuestionBank
+from app.models.pyq_question import PYQuestion
 from app.services.llm_service import (
     call_llm,
     extract_json_array,
@@ -59,6 +62,16 @@ PAPER_NAMES = {
     "DA": "Data Science and Artificial Intelligence",
 }
 
+# Aggregate selection targets the assembler enforces. assemble_exam picks
+# questions purely by (GA-vs-Subject, marks) — ignoring type/section for the
+# counts — so the top-up loop only needs to satisfy these four buckets.
+TARGETS: dict[tuple[str, int], int] = {
+    ("GA", 1): GA_1MARK,
+    ("GA", 2): GA_2MARK,
+    ("Subject", 1): SUBJECT_1MARK,
+    ("Subject", 2): SUBJECT_2MARK,
+}
+
 
 # ──────────────────────────────────────────────────────────
 # Public entry point
@@ -68,10 +81,28 @@ async def run_generation(exam_id: uuid.UUID) -> None:
     """
     Background task: generates all questions for an exam.
     Uses its own DB session (not the request session).
+
+    Wrapped in a hard timeout so a hung provider can never leave the exam pinned
+    in 'generating' forever; on timeout or any error the exam is marked failed.
     """
     async with AsyncSessionLocal() as db:
         try:
-            await _do_generation(db, exam_id)
+            await asyncio.wait_for(
+                _do_generation(db, exam_id),
+                timeout=settings.LLM_GEN_MAX_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "Exam generation timed out for %s after %ss",
+                exam_id,
+                settings.LLM_GEN_MAX_SECONDS,
+            )
+            await _set_error(
+                db,
+                exam_id,
+                f"Generation timed out after {settings.LLM_GEN_MAX_SECONDS}s. "
+                "Please try again.",
+            )
         except Exception as exc:
             logger.exception(f"Exam generation failed for {exam_id}: {exc}")
             await _set_error(db, exam_id, str(exc))
@@ -121,45 +152,86 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
     total_expected = sum(b["count"] for b in batches)
     logger.info(f"Batch plan: {len(batches)} batches, {total_expected} questions expected")
 
-    # ── 4. Generate questions batch by batch ──
+    # PYQ reference context: ONE serial prefetch on this session BEFORE the
+    # concurrent fan-out (the session is not concurrency-safe). The pool is
+    # reused by every top-up round — zero DB calls inside the loop. An empty
+    # pool (no PYQs loaded / flag off) attaches "" and prompts are unchanged.
+    pyq_pool: dict[tuple[str, int], list[dict]] = {}
+    if exam.use_pyq_reference:
+        pyq_pool = await _load_pyq_pool(db, exam.paper)
+        logger.info(
+            "PYQ reference pool: %s",
+            {f"{scope}/{marks}m": len(rows) for (scope, marks), rows in pyq_pool.items()},
+        )
+    _attach_pyq_examples(batches, pyq_pool)
+
+    # ── 4. Generate questions — concurrent first pass + self-healing top-up ──
+    # Topic pools the top-up phase draws from to refill deficient buckets.
+    all_ga_topics: list[str] = []
+    for _topics in ga_sections.values():
+        all_ga_topics.extend(_topics)
+    subject_items = list(subject_sections.items())
+
     all_questions: list[dict] = []
-    completed = 0
-    failed = 0
 
-    for batch_idx, batch_spec in enumerate(batches):
-        try:
-            raw = await _generate_one_batch(batch_spec)
-            valid = validate_batch(raw, expected_section=batch_spec["section_name"])
+    # Phase 0: fire every planned batch concurrently. Real concurrency is bounded
+    # by the semaphore inside llm_service.call_llm (LLM_MAX_CONCURRENCY); the
+    # consumer drains results one-at-a-time so the single DB session is only ever
+    # touched by one coroutine.
+    phase0_tasks = [asyncio.create_task(_wrap(spec)) for spec in batches]
+    new_valid = await _consume_and_collect(
+        db, exam, phase0_tasks, len(phase0_tasks), "round 1", 0
+    )
+    all_questions.extend(_dedup_against(all_questions, new_valid))
 
-            # Tag each question with paper
-            for q in valid:
-                q["_paper"] = exam.paper if batch_spec["is_ga"] is False else "GA"
+    # Top-up: refill ONLY the (scope, marks) buckets that fell short, until every
+    # bucket is satisfied, OR a round adds nothing new (stuck model), OR the round
+    # / time budget is exhausted. run_generation's wait_for is the hard backstop.
+    deadline = time.monotonic() + settings.LLM_TOPUP_TIME_BUDGET_SECONDS
+    rr = [0]  # mutable round-robin cursor across subject sections
+    for round_no in range(2, 2 + settings.LLM_TOPUP_MAX_ROUNDS):
+        deficits = _deficits(all_questions)
+        if sum(deficits.values()) == 0:
+            break  # first pass already covered every bucket — zero extra calls
+        if time.monotonic() >= deadline:
+            logger.warning("Top-up time budget exhausted; deficits=%s", deficits)
+            break
 
-            all_questions.extend(valid)
-            completed += len(valid)
-            failed += batch_spec["count"] - len(valid)
-
-            logger.info(
-                f"Batch {batch_idx + 1}/{len(batches)}: "
-                f"{len(valid)}/{batch_spec['count']} valid"
+        specs: list[dict] = []
+        for (scope, marks), deficit in deficits.items():
+            if deficit <= 0:
+                continue
+            if scope == "Subject" and not subject_items:
+                continue  # topic-scope removed all subjects; can't refill these
+            specs.extend(
+                _topup_specs(
+                    scope, marks, deficit, types_ratio, difficulty,
+                    exam.paper, all_ga_topics, subject_items, rr,
+                )
             )
+        if not specs:
+            break
+        _attach_pyq_examples(specs, pyq_pool)
 
-        except Exception as exc:
-            logger.error(f"Batch {batch_idx + 1} failed entirely: {exc}")
-            failed += batch_spec["count"]
+        before = len(all_questions)
+        topup_tasks = [asyncio.create_task(_wrap(spec)) for spec in specs]
+        new_valid = await _consume_and_collect(
+            db, exam, topup_tasks, len(topup_tasks),
+            f"round {round_no}", len(all_questions),
+        )
+        all_questions.extend(_dedup_against(all_questions, new_valid))
 
-        # Update progress
-        exam.generation_progress = {
-            "total": GATE_TOTAL_QUESTIONS,
-            "completed": min(completed, GATE_TOTAL_QUESTIONS),
-            "failed": failed,
-            "batch": f"{batch_idx + 1}/{len(batches)}",
-        }
-        await db.commit()
+        if len(all_questions) == before:
+            logger.warning(
+                "Top-up round %s produced 0 new questions; stopping early.",
+                round_no,
+            )
+            break
 
     logger.info(
-        f"Generation done: {len(all_questions)} valid questions "
-        f"({completed} completed, {failed} failed)"
+        "Generation done: %s valid questions (deficits=%s)",
+        len(all_questions),
+        _deficits(all_questions),
     )
 
     if len(all_questions) < 20:
@@ -195,10 +267,14 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
     exam.total_questions = summary["total_questions"]
     exam.total_marks = summary["total_marks"]
     exam.status = "generated"
+    # Fresh dict on success: no stale 'batch'/'error' keys leak through (the
+    # frontend flips to FAILED on any truthy 'error'), and 'failed' carries only
+    # a REAL shortfall so the "fewer questions" note shows only when warranted.
+    assembled = len(question_order)
     exam.generation_progress = {
         "total": GATE_TOTAL_QUESTIONS,
-        "completed": len(question_order),
-        "failed": failed,
+        "completed": assembled,
+        "failed": max(0, GATE_TOTAL_QUESTIONS - assembled),
     }
     await db.commit()
 
@@ -389,6 +465,7 @@ async def _generate_one_batch(batch_spec: dict) -> list[dict]:
             marks=batch_spec["marks"],
             difficulty=batch_spec["difficulty"],
             topics_list=topics_list,
+            pyq_examples=batch_spec.get("pyq_examples", ""),
         )
     else:
         user_prompt = prompt_template["user_prompt_template"].format(
@@ -399,6 +476,7 @@ async def _generate_one_batch(batch_spec: dict) -> list[dict]:
             difficulty=batch_spec["difficulty"],
             question_specs=question_specs,
             topics_list=topics_list,
+            pyq_examples=batch_spec.get("pyq_examples", ""),
         )
 
     system_prompt = prompt_template["system_prompt"]
@@ -421,6 +499,256 @@ async def _generate_one_batch(batch_spec: dict) -> list[dict]:
             q["section_name"] = batch_spec["section_name"]
 
     return questions
+
+
+async def _wrap(
+    spec: dict,
+) -> tuple[dict, list[dict] | None, Exception | None]:
+    """Run one batch, returning (spec, raw, exc) and NEVER raising.
+
+    This keeps a failed future from aborting the as_completed consumer and
+    preserves which spec failed (as_completed loses that association).
+    """
+    try:
+        return spec, await _generate_one_batch(spec), None
+    except Exception as exc:  # noqa: BLE001 — captured to report, not swallowed
+        return spec, None, exc
+
+
+async def _consume_and_collect(
+    db: AsyncSession,
+    exam: Exam,
+    tasks: list,
+    total: int,
+    label: str,
+    completed_so_far: int,
+) -> list[dict]:
+    """Drain in-flight batch tasks (created via _wrap) one-at-a-time, validating
+    and tagging each result and committing interim progress after each.
+
+    Single-consumer by design: the gathered tasks touch no DB session and this
+    loop awaits commits serially, so the one AsyncSession is never used
+    concurrently. Returns the validated (not-yet-deduped) questions.
+    """
+    collected: list[dict] = []
+    done = 0
+    for fut in asyncio.as_completed(tasks):
+        done += 1
+        spec, raw, exc = await fut
+        if exc is not None or raw is None:
+            logger.error("Batch failed in %s: %s", label, exc)
+        else:
+            valid = validate_batch(raw, expected_section=spec["section_name"])
+            for q in valid:
+                q["_paper"] = exam.paper if spec["is_ga"] is False else "GA"
+            collected.extend(valid)
+
+        running = completed_so_far + len(collected)
+        exam.generation_progress = {
+            "total": GATE_TOTAL_QUESTIONS,
+            "completed": min(running, GATE_TOTAL_QUESTIONS),
+            "failed": 0,  # interim only; the real shortfall is set once at the end
+            "batch": f"{label} {done}/{total}",
+        }
+        await db.commit()
+    return collected
+
+
+def _bucket_counts(pool: list[dict]) -> dict[tuple[str, int], int]:
+    """Count questions per (scope, marks) bucket, mirroring assemble_exam."""
+    counts: dict[tuple[str, int], int] = {key: 0 for key in TARGETS}
+    for q in pool:
+        scope = "GA" if q.get("section_name") == "General Aptitude" else "Subject"
+        key = (scope, q.get("marks"))
+        if key in counts:
+            counts[key] += 1
+    return counts
+
+
+def _deficits(pool: list[dict]) -> dict[tuple[str, int], int]:
+    """How many more questions each bucket needs to reach its target."""
+    counts = _bucket_counts(pool)
+    return {key: max(0, TARGETS[key] - counts[key]) for key in TARGETS}
+
+
+def _normalize_stem(stem: str) -> str:
+    """Whitespace/case-normalized stem text, for duplicate detection."""
+    return " ".join((stem or "").split()).lower()
+
+
+def _dedup_against(existing: list[dict], new: list[dict]) -> list[dict]:
+    """Return items of `new` whose normalized stem is not already present in
+    `existing` nor earlier within `new` (dedups across AND within rounds)."""
+    seen = {_normalize_stem(q.get("stem_tex", "")) for q in existing}
+    fresh: list[dict] = []
+    for q in new:
+        key = _normalize_stem(q.get("stem_tex", ""))
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        fresh.append(q)
+    return fresh
+
+
+# ── PYQ reference context ──
+# Real previous-year questions are injected into generation prompts as style /
+# difficulty calibration only (never shown to students, never copied). Pool is
+# keyed by the same (scope, marks) buckets as TARGETS.
+
+PYQ_POOL_PER_BUCKET = 12    # rows fetched per bucket in the one-shot prefetch
+PYQ_EXAMPLES_PER_BATCH = 3  # examples injected per LLM call
+PYQ_MAX_STEM_CHARS = 600    # stems are truncated to bound prompt size
+
+
+async def _load_pyq_pool(
+    db: AsyncSession, paper: str
+) -> dict[tuple[str, int], list[dict]]:
+    """Prefetch a random sample of PYQs per (scope, marks) bucket.
+
+    Called ONCE, serially, before the concurrent fan-out (the shared session is
+    not concurrency-safe); rows are projected to plain dicts so later sampling
+    never touches the session. GA questions appear inside every paper's PDF, so
+    the GA buckets match on section_name across papers.
+    """
+    pool: dict[tuple[str, int], list[dict]] = {}
+    for scope, marks in TARGETS:
+        stmt = select(PYQuestion).where(PYQuestion.marks == marks)
+        if scope == "GA":
+            stmt = stmt.where(PYQuestion.section_name == "General Aptitude")
+        else:
+            stmt = stmt.where(
+                PYQuestion.paper == paper,
+                or_(
+                    PYQuestion.section_name.is_(None),
+                    PYQuestion.section_name != "General Aptitude",
+                ),
+            )
+        stmt = stmt.order_by(func.random()).limit(PYQ_POOL_PER_BUCKET)
+        result = await db.execute(stmt)
+        pool[(scope, marks)] = [
+            {
+                "stem": row.stem,
+                "options": row.options,
+                "question_type": row.question_type,
+                "marks": row.marks,
+                "topic": row.topic,
+                "year": row.year,
+            }
+            for row in result.scalars().all()
+        ]
+    return pool
+
+
+def _format_pyq_options(options) -> str:
+    """Render PYQ options (stored as list or letter-keyed dict) on one line."""
+    if not options:
+        return ""
+    letters = "ABCDEFGH"
+    if isinstance(options, dict):
+        pairs = [f"({key}) {value}" for key, value in sorted(options.items())]
+    elif isinstance(options, list):
+        pairs = [
+            f"({letters[i]}) {opt}" for i, opt in enumerate(options[: len(letters)])
+        ]
+    else:
+        return ""
+    return "Options: " + "  ".join(pairs)
+
+
+def _format_pyq_examples(
+    bucket: list[dict], k: int = PYQ_EXAMPLES_PER_BATCH
+) -> str:
+    """Render up to k sampled PYQs as a reference block for the user prompt.
+
+    Returns "" for an empty bucket so the template's {pyq_examples} slot
+    degrades to a blank line. The framing header lives here (in the formatted
+    VALUE) rather than in the JSON template: str.format would choke on literal
+    braces in template text, while braces inside a formatted value are safe.
+    """
+    if not bucket:
+        return ""
+    sample = random.sample(bucket, min(k, len(bucket)))
+    lines = [
+        "REFERENCE — REAL past GATE questions "
+        "(STYLE AND DIFFICULTY CALIBRATION ONLY):",
+        "Study the phrasing style, rigor, and difficulty of these examples. "
+        "Your questions must be COMPLETELY ORIGINAL — do NOT copy, paraphrase, "
+        "or reuse their scenarios or numbers.",
+    ]
+    for i, q in enumerate(sample, start=1):
+        stem = " ".join((q.get("stem") or "").split())
+        if len(stem) > PYQ_MAX_STEM_CHARS:
+            stem = stem[:PYQ_MAX_STEM_CHARS].rstrip() + "…"
+        lines.append("")
+        lines.append(
+            f"[PYQ {i}] (GATE {q.get('year')}, {q.get('question_type')}, "
+            f"{q.get('marks')} marks, topic: {q.get('topic')})"
+        )
+        lines.append(stem)
+        options_line = _format_pyq_options(q.get("options"))
+        if options_line:
+            lines.append(options_line)
+    lines.append("")
+    lines.append("END OF REFERENCE.")
+    return "\n".join(lines)
+
+
+def _attach_pyq_examples(
+    specs: list[dict], pool: dict[tuple[str, int], list[dict]]
+) -> None:
+    """Set spec["pyq_examples"] on every batch spec (mutates in place).
+
+    Re-samples from the bucket per spec, so different batches (and top-up
+    rounds) see varied examples. An empty/missing bucket yields "".
+    """
+    for spec in specs:
+        key = ("GA" if spec.get("is_ga") else "Subject", spec.get("marks"))
+        spec["pyq_examples"] = _format_pyq_examples(pool.get(key, []))
+
+
+def _topup_specs(
+    scope: str,
+    marks: int,
+    deficit: int,
+    types_ratio: dict[str, float],
+    difficulty: str,
+    paper: str,
+    ga_topics: list[str],
+    subject_items: list[tuple[str, list[str]]],
+    rr: list[int],
+) -> list[dict]:
+    """Build batch specs to refill `deficit` questions for one (scope, marks)
+    bucket, chunked to <=5 like _build_batch_plan. Subject deficits are spread
+    round-robin across sections via the mutable cursor `rr`."""
+    types_dist = _distribute_types(deficit, types_ratio)
+    flat = _build_question_specs(types_dist, marks)
+    diff_level = _pick_difficulty(difficulty, marks)
+
+    specs: list[dict] = []
+    for start in range(0, len(flat), 5):
+        chunk = flat[start:start + 5]
+        type_counts: dict[str, int] = {}
+        for qtype in chunk:
+            type_counts[qtype] = type_counts.get(qtype, 0) + 1
+
+        if scope == "GA":
+            sec_name, topics, is_ga = "General Aptitude", ga_topics, True
+        else:
+            sec_name, topics = subject_items[rr[0] % len(subject_items)]
+            rr[0] += 1
+            is_ga = False
+
+        specs.append({
+            "section_name": sec_name,
+            "paper": paper,
+            "is_ga": is_ga,
+            "topics": topics,
+            "marks": marks,
+            "count": len(chunk),
+            "types": type_counts,
+            "difficulty": diff_level,
+        })
+    return specs
 
 
 async def _store_questions(
@@ -462,12 +790,41 @@ async def _store_questions(
 
 
 async def _set_error(db: AsyncSession, exam_id: uuid.UUID, error_msg: str) -> None:
-    """Mark an exam generation as failed."""
-    exam = await db.get(Exam, exam_id)
-    if exam:
-        exam.status = "failed"
-        exam.generation_progress = {
-            **(exam.generation_progress or {}),
-            "error": error_msg,
-        }
-        await db.commit()
+    """Mark an exam generation as failed.
+
+    Resilient to a poisoned/aborted session (e.g. a wait_for cancellation that
+    landed on a DB await): roll back first, and if the write still fails, retry
+    once on a fresh session so the exam can never be left stuck in 'generating'.
+    """
+    try:
+        await db.rollback()
+    except Exception:
+        pass
+
+    try:
+        exam = await db.get(Exam, exam_id)
+        if exam:
+            exam.status = "failed"
+            exam.generation_progress = {
+                **(exam.generation_progress or {}),
+                "error": error_msg,
+            }
+            await db.commit()
+        return
+    except Exception:
+        logger.exception(
+            "Primary _set_error write failed; retrying on a fresh session"
+        )
+
+    try:
+        async with AsyncSessionLocal() as db2:
+            exam = await db2.get(Exam, exam_id)
+            if exam:
+                exam.status = "failed"
+                exam.generation_progress = {
+                    **(exam.generation_progress or {}),
+                    "error": error_msg,
+                }
+                await db2.commit()
+    except Exception:
+        logger.exception("Fallback _set_error also failed for %s", exam_id)

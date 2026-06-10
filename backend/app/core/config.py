@@ -30,9 +30,11 @@ class Settings:
     )
     NEBIUS_MODEL: str = os.getenv("NEBIUS_MODEL", "deepseek-ai/DeepSeek-V3.2")
 
-    # OpenAI LLM
+    # OpenAI / OpenAI-compatible LLM (set OPENAI_BASE_URL to use a gateway
+    # such as tokenlb.net; leave it blank to hit the real OpenAI API).
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "")
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "")
 
     # Anthropic LLM
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
@@ -46,6 +48,18 @@ class Settings:
     LLM_MAX_CONCURRENCY: int = int(os.getenv("LLM_MAX_CONCURRENCY", "2"))
     LLM_RETRIES: int = int(os.getenv("LLM_RETRIES", "2"))
     LLM_TIMEOUT_SECONDS: int = int(os.getenv("LLM_TIMEOUT_SECONDS", "120"))
+
+    # Generation resilience.
+    # LLM_GEN_MAX_SECONDS is a HARD ceiling on a single exam's whole generation
+    # run (concurrent first pass + every top-up round). LLM_TOPUP_* bound the
+    # self-healing top-up phase. INVARIANT: keep LLM_TOPUP_TIME_BUDGET_SECONDS
+    # comfortably BELOW LLM_GEN_MAX_SECONDS so top-up exits via its own soft
+    # budget instead of being cancelled mid-DB-write by the hard timeout.
+    LLM_GEN_MAX_SECONDS: int = int(os.getenv("LLM_GEN_MAX_SECONDS", "900"))
+    LLM_TOPUP_MAX_ROUNDS: int = int(os.getenv("LLM_TOPUP_MAX_ROUNDS", "3"))
+    LLM_TOPUP_TIME_BUDGET_SECONDS: int = int(
+        os.getenv("LLM_TOPUP_TIME_BUDGET_SECONDS", "420")
+    )
 
     # PDF / LaTeX
     LATEX_BUILD_URL: str = os.getenv(

@@ -25,6 +25,7 @@ class LLMProviderRegistryTests(unittest.TestCase):
             "NEBIUS_MODEL": settings.NEBIUS_MODEL,
             "OPENAI_API_KEY": settings.OPENAI_API_KEY,
             "OPENAI_MODEL": settings.OPENAI_MODEL,
+            "OPENAI_BASE_URL": settings.OPENAI_BASE_URL,
             "ANTHROPIC_API_KEY": settings.ANTHROPIC_API_KEY,
             "ANTHROPIC_MODEL": settings.ANTHROPIC_MODEL,
         }
@@ -52,6 +53,7 @@ class LLMProviderRegistryTests(unittest.TestCase):
         settings.LLM_PROVIDER = "openai"
         settings.OPENAI_API_KEY = "openai-key"
         settings.OPENAI_MODEL = "openai-model"
+        settings.OPENAI_BASE_URL = ""  # no gateway configured → official OpenAI endpoint
 
         provider = get_active_provider()
 
@@ -288,6 +290,8 @@ class QuestionStorageMetadataTests(unittest.TestCase):
         fake_syllabus.Syllabus = object
         fake_question_bank = types.ModuleType("app.models.question_bank")
         fake_question_bank.QuestionBank = FakeQuestionBank
+        fake_pyq_question = types.ModuleType("app.models.pyq_question")
+        fake_pyq_question.PYQuestion = object
 
         module_names = [
             "app.services.question_generator",
@@ -295,6 +299,7 @@ class QuestionStorageMetadataTests(unittest.TestCase):
             "app.models.exam",
             "app.models.syllabus",
             "app.models.question_bank",
+            "app.models.pyq_question",
         ]
         original_modules = {
             name: sys.modules.get(name)
@@ -311,6 +316,7 @@ class QuestionStorageMetadataTests(unittest.TestCase):
             "app.models.exam": fake_exam,
             "app.models.syllabus": fake_syllabus,
             "app.models.question_bank": fake_question_bank,
+            "app.models.pyq_question": fake_pyq_question,
         }
 
         try:
@@ -334,6 +340,97 @@ class QuestionStorageMetadataTests(unittest.TestCase):
         self.assertEqual(len(stored_ids), 1)
         self.assertEqual(db.added[0].llm_provider, "openai")
         self.assertEqual(db.added[0].llm_model, "openai-model")
+
+
+def _load_question_generator_isolated():
+    """Import app.services.question_generator WITHOUT pulling in app.core.database
+    (which requires asyncpg). Mirrors QuestionStorageMetadataTests' isolation so
+    the pure planning helpers can be unit-tested anywhere. The returned module's
+    pure functions don't use the faked modules, so they behave normally."""
+    from sqlalchemy.orm import declarative_base
+
+    fake_database = types.ModuleType("app.core.database")
+    fake_database.Base = declarative_base()
+    fake_database.AsyncSessionLocal = object()
+
+    fake_models = types.ModuleType("app.models")
+    fake_models.__path__ = []
+    fake_exam = types.ModuleType("app.models.exam")
+    fake_exam.Exam = object
+    fake_syllabus = types.ModuleType("app.models.syllabus")
+    fake_syllabus.Syllabus = object
+    fake_question_bank = types.ModuleType("app.models.question_bank")
+    fake_question_bank.QuestionBank = object
+    fake_pyq_question = types.ModuleType("app.models.pyq_question")
+    fake_pyq_question.PYQuestion = object
+
+    fake_modules = {
+        "app.core.database": fake_database,
+        "app.models": fake_models,
+        "app.models.exam": fake_exam,
+        "app.models.syllabus": fake_syllabus,
+        "app.models.question_bank": fake_question_bank,
+        "app.models.pyq_question": fake_pyq_question,
+    }
+    module_names = ["app.services.question_generator", *fake_modules.keys()]
+    original_modules = {
+        name: sys.modules.get(name) for name in module_names if name in sys.modules
+    }
+    for name in module_names:
+        sys.modules.pop(name, None)
+    try:
+        with patch.dict(sys.modules, fake_modules):
+            return importlib.import_module("app.services.question_generator")
+    finally:
+        for name in module_names:
+            sys.modules.pop(name, None)
+        sys.modules.update(original_modules)
+
+
+class GenerationHelperTests(unittest.TestCase):
+    """Pure-function unit tests for the deficit and dedup helpers that drive the
+    concurrent generation + top-up loop."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.g = _load_question_generator_isolated()
+
+    def test_deficits_empty_pool_equals_targets(self) -> None:
+        self.assertEqual(
+            self.g._deficits([]),
+            {("GA", 1): 5, ("GA", 2): 5, ("Subject", 1): 25, ("Subject", 2): 30},
+        )
+
+    def test_deficits_counts_by_scope_and_marks(self) -> None:
+        pool = (
+            [{"section_name": "General Aptitude", "marks": 1}] * 5
+            + [{"section_name": "General Aptitude", "marks": 2}] * 2
+            + [{"section_name": "Algorithms", "marks": 1}] * 25
+            + [{"section_name": "Algorithms", "marks": 2}] * 30
+        )
+        self.assertEqual(
+            self.g._deficits(pool),
+            {("GA", 1): 0, ("GA", 2): 3, ("Subject", 1): 0, ("Subject", 2): 0},
+        )
+
+    def test_deficits_never_negative_on_overfill(self) -> None:
+        pool = [{"section_name": "General Aptitude", "marks": 1}] * 9
+        self.assertEqual(self.g._deficits(pool)[("GA", 1)], 0)
+
+    def test_dedup_against_drops_exact_and_normalized_duplicates(self) -> None:
+        existing = [{"stem_tex": "What is 2+2?"}]
+        new = [
+            {"stem_tex": "  what   IS 2+2? "},      # normalized dup of existing -> drop
+            {"stem_tex": "A distinct question?"},   # keep
+            {"stem_tex": "A distinct question?"},   # dup within `new` -> drop second
+        ]
+        fresh = self.g._dedup_against(existing, new)
+        self.assertEqual(len(fresh), 1)
+        self.assertEqual(fresh[0]["stem_tex"], "A distinct question?")
+
+    def test_dedup_against_keeps_distinct(self) -> None:
+        new = [{"stem_tex": "Q1"}, {"stem_tex": "Q2"}, {"stem_tex": "Q3"}]
+        self.assertEqual(len(self.g._dedup_against([], new)), 3)
 
 
 if __name__ == "__main__":

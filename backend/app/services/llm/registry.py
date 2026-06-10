@@ -27,10 +27,14 @@ def _build_provider() -> LLMProvider:
         )
 
     if provider == "openai":
+        # Optional base_url lets this slot target any OpenAI-compatible
+        # gateway (e.g. tokenlb.net). Blank → the official OpenAI endpoint.
+        base_url = (settings.OPENAI_BASE_URL or "").strip() or None
         return OpenAICompatibleProvider(
             name="openai",
             api_key=_require(settings.OPENAI_API_KEY, "OPENAI_API_KEY", provider),
             model=_require(settings.OPENAI_MODEL, "OPENAI_MODEL", provider),
+            base_url=base_url,
         )
 
     if provider == "anthropic":

@@ -5,7 +5,12 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.syllabus import DataLoadResponse, SyllabusStatsResponse
-from app.services.data_loader import load_syllabus, get_syllabus_stats
+from app.services.data_loader import (
+    load_syllabus,
+    load_pyqs,
+    get_syllabus_stats,
+    get_pyq_stats,
+)
 
 router = APIRouter()
 
@@ -20,26 +25,33 @@ async def load_data(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Reads syllabus JSONs from backend/data/syllabus/ and inserts into
-    the `syllabus` table.  Idempotent — safe to call multiple times.
+    Reads syllabus JSONs from backend/data/syllabus/ and PYQ JSONs from
+    backend/data/pyqs/ (optional) and inserts into the `syllabus` and
+    `pyq_questions` tables.  Idempotent — safe to call multiple times.
 
     Requires authentication (any logged-in user can trigger this for now).
     """
-    result = await load_syllabus(db)
+    syllabus_result = await load_syllabus(db)
+    pyq_result = await load_pyqs(db)
 
-    if result.errors and not result.papers_loaded:
+    papers_loaded = syllabus_result.papers_loaded + pyq_result.papers_loaded
+    errors = syllabus_result.errors + pyq_result.errors
+
+    if errors and not papers_loaded:
         message = "Data loading failed — see errors"
-    elif result.errors:
+    elif errors:
         message = "Data partially loaded — some files had errors"
     else:
-        message = "All syllabus data loaded successfully"
+        message = "All data loaded successfully"
 
     return DataLoadResponse(
         message=message,
-        papers_loaded=result.papers_loaded,
-        total_rows_inserted=result.total_rows_inserted,
-        details=result.details,
-        errors=result.errors,
+        papers_loaded=papers_loaded,
+        total_rows_inserted=(
+            syllabus_result.total_rows_inserted + pyq_result.total_rows_inserted
+        ),
+        details={**syllabus_result.details, **pyq_result.details},
+        errors=errors,
     )
 
 
@@ -52,6 +64,7 @@ async def data_stats(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Returns counts of topics per paper currently in the database."""
+    """Returns counts of topics and PYQs per paper currently in the database."""
     stats = await get_syllabus_stats(db)
+    stats["pyqs"] = await get_pyq_stats(db)
     return SyllabusStatsResponse(stats=stats)

@@ -26,6 +26,9 @@ class ExamGenerateRequest(BaseModel):
     selected_topics: Optional[list[str]] = None
     difficulty: str  # 'easy', 'medium', 'hard', 'auto'
     types_ratio: TypesRatio = TypesRatio()
+    # Inject real previous-year questions into generation prompts as style /
+    # difficulty reference (no-op when no PYQs are loaded for the paper).
+    use_pyq_reference: bool = True
 
     @field_validator("paper")
     @classmethod

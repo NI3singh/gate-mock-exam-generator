@@ -13,6 +13,7 @@ from app.core.database import engine,  AsyncSessionLocal
 from app.core.firebase_auth import init_firebase
 from app.api.router import api_router
 from app.models.syllabus import Syllabus
+from app.models.exam import Exam
 from app.services.data_loader import load_syllabus
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,29 @@ async def lifespan(app: FastAPI):
                 )
         else:
             print(f"✅  Syllabus table already has {total} rows — skipping auto-load")
+
+        # 4. Recover orphaned generations. A fresh process cannot have a
+        #    legitimately running generation task, so any exam still marked
+        #    'generating' was interrupted (e.g. by a server restart) — mark it
+        #    failed so it never stays stuck forever.
+        orphan_result = await db.execute(
+            select(Exam).where(Exam.status == "generating")
+        )
+        orphans = orphan_result.scalars().all()
+        if orphans:
+            for orphan in orphans:
+                orphan.status = "failed"
+                orphan.generation_progress = {
+                    **(orphan.generation_progress or {}),
+                    "error": (
+                        "Generation was interrupted by a server restart. "
+                        "Please generate a new exam."
+                    ),
+                }
+            await db.commit()
+            print(
+                f"♻️  Marked {len(orphans)} orphaned 'generating' exam(s) as failed"
+            )
 
     yield
 
