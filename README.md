@@ -21,7 +21,9 @@ taken in an authentic exam interface, graded instantly, and analyzed down to the
 
 **🎬 Watch the website tour** *(click the preview)*
 
-[![Website tour video](docs/tour-poster.png)](docs/website-tour.mp4)
+<a href="https://youtu.be/NFoiecE-uYs?si=tLaJnazA-xBl4AEt" target="_blank">
+  <img src="docs/tour-poster.png" alt="Watch the demo" />
+</a>
 
 *[`docs/website-tour.mp4`](docs/website-tour.mp4) — a 40-second walkthrough of the live product, rendered with Remotion from real app screenshots.*
 
