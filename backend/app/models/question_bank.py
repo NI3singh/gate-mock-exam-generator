@@ -28,6 +28,7 @@ class QuestionBank(Base):
     solution_tex: Mapped[str] = mapped_column(String, nullable=False)
     estimated_time_seconds: Mapped[int | None] = mapped_column(Integer)
     provenance: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    llm_provider: Mapped[str | None] = mapped_column(String(50))
     llm_model: Mapped[str | None] = mapped_column(String(100))
     llm_prompt_version: Mapped[str | None] = mapped_column(String(50))
     validated: Mapped[bool] = mapped_column(default=False)

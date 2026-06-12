@@ -146,7 +146,7 @@ export default function ExamProgress() {
 
   /* ── Render ── */
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
 
       <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
@@ -469,7 +469,7 @@ export default function ExamProgress() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-0.5 text-blue-500">•</span>
-                The exam follows the official GATE 2026 pattern: 65 Qs, 100 marks, 3 hours.
+                The exam follows the official GATE 2027 pattern: 65 Qs, 100 marks, 3 hours.
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-0.5 text-blue-500">•</span>

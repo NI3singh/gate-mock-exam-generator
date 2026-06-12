@@ -90,7 +90,7 @@ export default function ResultScreen() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `GATE2026_Solution_Key_${attemptId}.pdf`);
+      link.setAttribute("download", `GATE2027_Solution_Key_${attemptId}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
@@ -144,7 +144,10 @@ export default function ResultScreen() {
     );
   }
 
-  const percentage = Math.round((result.score / result.max_score) * 100);
+  const percentage =
+    result.max_score > 0
+      ? Math.round((result.score / result.max_score) * 100)
+      : 0;
   const scoreColor =
     percentage >= 75 ? "text-green-600"
     : percentage >= 50 ? "text-yellow-600"
@@ -154,7 +157,7 @@ export default function ResultScreen() {
   const typeBreakdown = result.score_breakdown?.type ?? {};
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen py-8 px-4">
       {downloadingPdf && (
         <LoadingSpinner size="xl" text="BUILDING SOLUTIONS PDF" fullPage />
       )}
@@ -342,7 +345,7 @@ export default function ResultScreen() {
         <div className="flex gap-4 justify-center flex-wrap">
           <button
             onClick={() => navigate("/dashboard")}
-            className="px-8 py-3 rounded-xl bg-blue-700 text-white font-semibold hover:bg-blue-800 transition-colors"
+            className="px-8 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
           >
             Back to Dashboard
           </button>

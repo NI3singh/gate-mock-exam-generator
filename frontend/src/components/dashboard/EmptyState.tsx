@@ -14,7 +14,7 @@ export default function EmptyState() {
       <p className="mx-auto mt-2 max-w-md text-sm text-gray-500">
         Generate your first AI-powered GATE mock test and start your
         preparation journey. Each test is unique and follows the exact GATE
-        2026 pattern.
+        2027 pattern.
       </p>
 
       <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">

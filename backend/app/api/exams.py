@@ -27,6 +27,8 @@ from app.schemas.exam import (
     AttemptStartResponse,
 )
 from app.services.question_generator import run_generation
+from app.services.grading_engine import grade_attempt
+from app.services.analytics_service import refresh_user_analytics_safely
 
 router = APIRouter()
 
@@ -306,12 +308,12 @@ async def start_exam(
         remaining = max(0, duration_seconds - int(elapsed))
 
         if remaining <= 0:
-            # Time has expired — auto-submit
-            existing.submitted = True
+            # Time has expired — auto-submit AND grade so the attempt has a
+            # real score (grade_attempt sets submitted/end_time, marks the exam
+            # completed, and commits).
             existing.auto_submitted = True
-            existing.end_time = now
-            exam.status = "completed"
-            await db.commit()
+            await grade_attempt(db, str(existing.id))
+            await refresh_user_analytics_safely(db, user.id)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Exam time has expired. The attempt has been auto-submitted.",
@@ -400,8 +402,9 @@ async def get_exam(
         )
 
     # ── 2. Build question_id → order_entry map ──
-    # question_order may have empty question_id strings (bug in assemble_exam
-    # where stored UUIDs don't update the original dicts), so fall back to
+    # Newly generated exams always carry valid question_id values in
+    # question_order. Legacy exams generated before that fix may still have
+    # empty question_id strings stored in the DB, so fall back to
     # exam.question_ids if question_order yields no valid IDs.
     question_order: list[dict] = exam.question_order or []
     id_to_order: dict[str, dict] = {

@@ -33,7 +33,11 @@ from app.core.llm_config import (
 from app.models.exam import Exam
 from app.models.syllabus import Syllabus
 from app.models.question_bank import QuestionBank
-from app.services.llm_service import call_llm, extract_json_array
+from app.services.llm_service import (
+    call_llm,
+    extract_json_array,
+    get_active_llm_metadata,
+)
 from app.services.question_validator import validate_batch
 from app.services.exam_assembler import assemble_exam, compute_marks_summary
 
@@ -167,22 +171,16 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
     # ── 5. Store questions in question_bank ──
     stored_ids = await _store_questions(db, all_questions, exam)
 
-    # FIX: Tag each question dict with its stored UUID BEFORE assembly.
-    # stored_ids[i] corresponds to all_questions[i] by position.
-    # assemble_exam returns `selected` which is a subset of all_questions
-    # in a different order. We must carry the ID through via the dict itself,
-    # not by positional index after the fact.
+    # Tag each question dict with its stored UUID BEFORE assembly.
+    # stored_ids[i] corresponds to all_questions[i] by position (see
+    # _store_questions). assemble_exam reads this "_stored_id" off each
+    # selected dict, so every question_order entry comes out with the correct
+    # question_id — no positional post-fix required.
     for i, q in enumerate(all_questions):
         q["_stored_id"] = str(stored_ids[i])
 
     # ── 6. Assemble exam ──
-    question_order, selected = assemble_exam(all_questions, exam.paper)
-
-    # Map each question_order entry to the correct stored UUID via the
-    # corresponding entry in `selected` (same positional order).
-    for i, entry in enumerate(question_order):
-        if i < len(selected):
-            entry["question_id"] = selected[i].get("_stored_id", "")
+    question_order, _selected = assemble_exam(all_questions, exam.paper)
 
     summary = compute_marks_summary(question_order)
     logger.info(f"Exam assembled: {summary}")
@@ -191,11 +189,16 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
     # question_ids = ordered list of UUID strings matching question_order
     exam.question_ids = [entry["question_id"] for entry in question_order]
     exam.question_order = question_order
+    # Reconcile the headline totals with what was actually assembled. If
+    # generation fell short of the standard 65 questions / 100 marks, scoring
+    # and percentages must use the real totals, not the optimistic defaults.
+    exam.total_questions = summary["total_questions"]
+    exam.total_marks = summary["total_marks"]
     exam.status = "generated"
     exam.generation_progress = {
         "total": GATE_TOTAL_QUESTIONS,
         "completed": len(question_order),
-        "failed": 0,
+        "failed": failed,
     }
     await db.commit()
 
@@ -427,6 +430,7 @@ async def _store_questions(
 ) -> list[uuid.UUID]:
     """Store generated questions in the question_bank table."""
     stored_ids: list[uuid.UUID] = []
+    llm_metadata = get_active_llm_metadata()
 
     for q in questions:
         qb = QuestionBank(
@@ -445,7 +449,8 @@ async def _store_questions(
             answer=q["answer"],
             solution_tex=q["solution_tex"],
             estimated_time_seconds=q.get("estimated_time_seconds"),
-            llm_model=settings.NEBIUS_MODEL,
+            llm_provider=llm_metadata["provider"],
+            llm_model=llm_metadata["model"],
             llm_prompt_version="1.0",
             validated=True,
         )

@@ -67,7 +67,7 @@ class ExamErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="font-exam min-h-screen flex items-center justify-center bg-gray-100">
           <div className="text-center max-w-lg p-8 bg-white rounded-2xl border border-red-200 shadow-lg">
             <div className="text-5xl mb-4">⚠️</div>
             <h2 className="text-xl font-bold text-gray-900 mb-3">Something went wrong</h2>
@@ -384,7 +384,6 @@ function QuestionPalette({
   onNavigate,
   onSectionChange,
   onSubmit,
-  responses,
 }: {
   questions: QuestionItem[];
   questionStatuses: Record<string, QuestionStatus>;
@@ -393,7 +392,6 @@ function QuestionPalette({
   onNavigate: (qno: number) => void;
   onSectionChange: (section: "all" | QuestionSection) => void;
   onSubmit: () => void;
-  responses: Record<string, AnyAnswer>;
 }) {
   const gaQuestions = questions.filter((q) => q.section === "GA");
   const subjectQuestions = questions.filter((q) => q.section === "Subject");
@@ -485,7 +483,7 @@ function QuestionPalette({
       <div className="p-3 border-t border-gray-200">
         <button
           onClick={onSubmit}
-          className="w-full bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
         >
           Submit Exam
         </button>
@@ -955,7 +953,7 @@ export default function ExamScreen() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="font-exam min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md p-8 bg-white rounded-xl border border-red-200">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Cannot Start Exam</h2>
@@ -977,7 +975,7 @@ export default function ExamScreen() {
 
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="font-exam min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md p-8 bg-white rounded-xl border border-amber-200">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="text-lg font-bold text-gray-900 mb-2">Exam Has No Questions</h2>
@@ -1029,7 +1027,7 @@ export default function ExamScreen() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <ExamErrorBoundary>
-    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+    <div className="font-exam h-screen flex flex-col bg-gray-100 overflow-hidden">
       {submittingExam && (
         <LoadingSpinner size="xl" text="SUBMITTING YOUR EXAM" fullPage />
       )}
@@ -1037,7 +1035,7 @@ export default function ExamScreen() {
       {/* ── Top bar ── */}
       <div className="flex-shrink-0 bg-blue-800 text-white px-4 py-2 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-bold">GATE 2026 Mock Test</span>
+          <span className="text-lg font-bold">GATE 2027 Mock Test</span>
           <span className="text-blue-300">|</span>
           <span className="text-sm text-blue-200">
             Paper: <strong className="text-white">{exam.paper}</strong>
@@ -1213,7 +1211,6 @@ export default function ExamScreen() {
           onNavigate={handleNavigateTo}
           onSectionChange={setActiveSection}
           onSubmit={handleSubmit}
-          responses={responses}
         />
       </div>
 

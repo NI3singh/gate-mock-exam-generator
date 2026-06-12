@@ -168,7 +168,7 @@ export default function Analytics() {
 
   if (!dashboard) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Navbar />
         <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="rounded-xl border border-red-200 bg-white p-10 text-center shadow-sm">
@@ -190,7 +190,7 @@ export default function Analytics() {
 
   if (dashboard.total_exams_taken === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Navbar />
 
         <main className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 lg:px-8">
@@ -235,16 +235,13 @@ export default function Analytics() {
         : "text-gray-600";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
 
       <main className="app-shell mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-700">
-              Part 14 Analytics
-            </div>
-            <h1 className="mt-3 text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900">
               Performance Analytics
             </h1>
             <p className="mt-2 max-w-3xl text-gray-500">

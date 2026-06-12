@@ -88,7 +88,7 @@ export default function GenerateExam() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {submitting && (
         <LoadingSpinner size="xl" text="PREPARING YOUR EXAM" fullPage />
       )}
@@ -101,7 +101,7 @@ export default function GenerateExam() {
             Generate New Mock Test
           </h1>
           <p className="mt-2 text-gray-500">
-            Configure your GATE 2026 mock exam. Each test follows the official
+            Configure your GATE 2027 mock exam. Each test follows the official
             pattern: 65 questions, 100 marks, 3 hours.
           </p>
         </div>
