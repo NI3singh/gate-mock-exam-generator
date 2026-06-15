@@ -8,6 +8,8 @@ venv/
 dist/
 build/
 
+.venv/
+
 # Environment
 .env
 backend/.env

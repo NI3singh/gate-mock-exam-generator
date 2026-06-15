@@ -30,13 +30,23 @@ class Settings:
     )
     NEBIUS_MODEL: str = os.getenv("NEBIUS_MODEL", "deepseek-ai/DeepSeek-V3.2")
 
-    # OpenAI LLM
+    # OpenAI LLM (OPENAI_BASE_URL lets you point at any OpenAI-compatible gateway)
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "")
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "")
 
     # Anthropic LLM
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     ANTHROPIC_MODEL: str = os.getenv("ANTHROPIC_MODEL", "")
+
+    # Generic LLM credentials - a single fallback that works for ANY provider
+    # selected via LLM_PROVIDER. Lets a cloner use a brand-new provider with no
+    # new code and no provider-specific env vars:
+    #   LLM_PROVIDER=<name>  +  LLM_API_KEY / LLM_MODEL / LLM_BASE_URL
+    # Per-provider vars (e.g. NEBIUS_API_KEY) always win over these.
+    LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "")
+    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "")
 
     # LLM defaults
     LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "16000"))

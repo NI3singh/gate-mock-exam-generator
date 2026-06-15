@@ -95,38 +95,31 @@ python -m venv mock-venv
 pip install -r requirements.txt
 ```
 
-Create `backend/.env`:
+Create `backend/.env` — the easiest way is to copy the annotated template:
+
+```powershell
+cd backend
+Copy-Item .env.example .env      # then edit .env
+```
+
+A minimal `backend/.env` (Nebius default) looks like:
 
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/gate_mock_test
 FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
 
-# ── Active LLM provider: nebius | openai | anthropic ──
+# ── LLM provider (see "Switching LLM providers" below) ──
 LLM_PROVIDER=nebius
-
 NEBIUS_API_KEY=your_nebius_api_key
-NEBIUS_BASE_URL=https://api.studio.nebius.com/v1/
 NEBIUS_MODEL=deepseek-ai/DeepSeek-V3.2
-
-OPENAI_API_KEY=
-OPENAI_MODEL=
-OPENAI_BASE_URL=          # optional — point at any OpenAI-compatible gateway
-
-ANTHROPIC_API_KEY=
-ANTHROPIC_MODEL=
-
-LLM_MAX_TOKENS=16000
-LLM_TEMPERATURE=0.7
-LLM_BATCH_SIZE=5
-LLM_MAX_CONCURRENCY=2
-LLM_RETRIES=2
-LLM_TIMEOUT_SECONDS=120
 
 LATEX_BUILD_URL=https://latex.ytotech.com/builds/sync
 LATEX_COMPILER=xelatex
 APP_ENV=development
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
+
+See [`backend/.env.example`](backend/.env.example) for every LLM option and tuning knob.
 
 Drop your Firebase Admin JSON at `backend/firebase-service-account.json`, then:
 
@@ -165,13 +158,51 @@ npm run dev      # → http://localhost:5173
 
 ## 🔌 Switching LLM providers
 
-The frontend never knows which AI is used — it's a backend-only concern:
+The provider system is **data-driven** — switching or adding a provider is an `.env` change, never a code edit. The frontend never knows which AI is used; it's a backend-only concern.
 
-1. Set `LLM_PROVIDER` to `nebius`, `openai`, or `anthropic` in `backend/.env`
-2. Fill in that provider's key/model (and `OPENAI_BASE_URL` for OpenAI-compatible gateways)
-3. Restart the backend
+**Built-in presets** (default endpoint already known, just add key + model):
+`openai` · `anthropic` · `nebius` · `deepseek` · `openrouter` · `groq` · `together` · `xai` · `mistral` · `moonshot` / `kimi` · `ollama` · `lmstudio`
 
-Inactive provider settings are ignored. There is no silent fallback — if the active provider fails, generation fails loudly with provider/model context in the logs.
+Two ways to configure **any** provider — per-provider vars, or a generic fallback that works for all of them:
+
+| | base URL | API key | model |
+|---|---|---|---|
+| Per-provider | `<PROVIDER>_BASE_URL` | `<PROVIDER>_API_KEY` | `<PROVIDER>_MODEL` |
+| Generic fallback | `LLM_BASE_URL` | `LLM_API_KEY` | `LLM_MODEL` |
+
+Per-provider vars win over the generic ones. Resolution precedence:
+
+```
+base_url : <PROVIDER>_BASE_URL > LLM_BASE_URL > built-in default > SDK default
+api_key  : <PROVIDER>_API_KEY  > LLM_API_KEY  > placeholder (keyless local only)
+model    : <PROVIDER>_MODEL     > LLM_MODEL     > built-in default
+```
+
+**Examples** (set in `backend/.env`, then restart the backend):
+
+```env
+# First-party — just a key + model
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+
+# Kimi / Moonshot, DeepSeek, OpenRouter, Groq… (preset endpoints)
+LLM_PROVIDER=kimi
+KIMI_API_KEY=sk-...
+KIMI_MODEL=kimi-k2-0711-preview
+
+# ANY OpenAI-compatible endpoint (vLLM, LM Studio, a relay, a new gateway)
+LLM_PROVIDER=openai_compatible
+LLM_BASE_URL=https://your-endpoint/v1
+LLM_API_KEY=your-token            # omit for keyless local servers
+LLM_MODEL=your-model-id
+
+# Local, keyless
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=llama3
+```
+
+Adding a brand-new named provider with its own default URL is a one-line data row in `backend/app/services/llm/provider_specs.py`. Inactive provider settings are ignored. There is **no silent fallback** — if the active provider is misconfigured, generation fails loudly with the exact env var to fix; if a configured provider call fails, it fails with provider/model context in the logs.
 
 ## 📡 API overview
 

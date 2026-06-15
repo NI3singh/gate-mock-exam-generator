@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import os
 import sys
 import types
 import unittest
@@ -17,17 +18,30 @@ from app.services.question_validator import validate_batch
 
 
 class LLMProviderRegistryTests(unittest.TestCase):
+    # Settings fields that influence provider resolution. Snapshotted and, for
+    # the generic fallbacks, blanked so each test is deterministic regardless of
+    # whatever a developer's local .env happens to contain.
+    _TRACKED = (
+        "LLM_PROVIDER",
+        "NEBIUS_API_KEY",
+        "NEBIUS_BASE_URL",
+        "NEBIUS_MODEL",
+        "OPENAI_API_KEY",
+        "OPENAI_MODEL",
+        "OPENAI_BASE_URL",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_MODEL",
+        "LLM_API_KEY",
+        "LLM_MODEL",
+        "LLM_BASE_URL",
+    )
+
     def setUp(self) -> None:
-        self.original = {
-            "LLM_PROVIDER": settings.LLM_PROVIDER,
-            "NEBIUS_API_KEY": settings.NEBIUS_API_KEY,
-            "NEBIUS_BASE_URL": settings.NEBIUS_BASE_URL,
-            "NEBIUS_MODEL": settings.NEBIUS_MODEL,
-            "OPENAI_API_KEY": settings.OPENAI_API_KEY,
-            "OPENAI_MODEL": settings.OPENAI_MODEL,
-            "ANTHROPIC_API_KEY": settings.ANTHROPIC_API_KEY,
-            "ANTHROPIC_MODEL": settings.ANTHROPIC_MODEL,
-        }
+        self.original = {key: getattr(settings, key) for key in self._TRACKED}
+        # Neutralise generic fallbacks + the optional openai base url so tests
+        # exercise only the values they explicitly set.
+        for key in ("LLM_API_KEY", "LLM_MODEL", "LLM_BASE_URL", "OPENAI_BASE_URL"):
+            setattr(settings, key, "")
         reset_provider_cache()
 
     def tearDown(self) -> None:
@@ -81,6 +95,85 @@ class LLMProviderRegistryTests(unittest.TestCase):
             "LLM_PROVIDER='openai' requires OPENAI_API_KEY",
         ):
             get_active_provider()
+
+    def test_named_preset_provider_uses_spec_base_url(self) -> None:
+        # DeepSeek is a data-only preset (no code branch). It must resolve its
+        # default base URL and read DEEPSEEK_API_KEY / DEEPSEEK_MODEL from env.
+        settings.LLM_PROVIDER = "deepseek"
+        with patch.dict(
+            os.environ,
+            {"DEEPSEEK_API_KEY": "ds-key", "DEEPSEEK_MODEL": "deepseek-chat"},
+            clear=False,
+        ):
+            provider = get_active_provider()
+
+        self.assertIsInstance(provider, OpenAICompatibleProvider)
+        self.assertEqual(provider.name, "deepseek")
+        self.assertEqual(provider.model, "deepseek-chat")
+        self.assertEqual(provider.base_url, "https://api.deepseek.com")
+
+    def test_openai_compatible_escape_hatch_requires_base_url(self) -> None:
+        settings.LLM_PROVIDER = "openai_compatible"
+        settings.LLM_API_KEY = "tok"
+        settings.LLM_MODEL = "some-model"
+        settings.LLM_BASE_URL = ""
+
+        with self.assertRaisesRegex(
+            LLMConfigurationError,
+            "requires a base URL",
+        ):
+            get_active_provider()
+
+    def test_openai_compatible_escape_hatch_resolves_with_generic_vars(self) -> None:
+        # The whole point: any OpenAI-compatible endpoint via generic vars only.
+        settings.LLM_PROVIDER = "openai_compatible"
+        settings.LLM_API_KEY = "tok"
+        settings.LLM_MODEL = "custom-model"
+        settings.LLM_BASE_URL = "https://relay.example/v1"
+
+        provider = get_active_provider()
+
+        self.assertIsInstance(provider, OpenAICompatibleProvider)
+        self.assertEqual(provider.name, "openai_compatible")
+        self.assertEqual(provider.model, "custom-model")
+        self.assertEqual(provider.base_url, "https://relay.example/v1")
+
+    def test_keyless_local_provider_uses_placeholder_key(self) -> None:
+        settings.LLM_PROVIDER = "ollama"
+        settings.LLM_MODEL = "llama3"
+
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("OLLAMA_API_KEY", None)
+            provider = get_active_provider()
+
+        self.assertIsInstance(provider, OpenAICompatibleProvider)
+        self.assertEqual(provider.name, "ollama")
+        self.assertEqual(provider.model, "llama3")
+        self.assertEqual(provider.base_url, "http://localhost:11434/v1")
+
+    def test_per_provider_var_overrides_generic_var(self) -> None:
+        settings.LLM_PROVIDER = "openai"
+        settings.OPENAI_API_KEY = "specific"
+        settings.OPENAI_MODEL = "gpt-x"
+        settings.LLM_API_KEY = "generic"
+        settings.LLM_MODEL = "generic-model"
+
+        provider = get_active_provider()
+
+        self.assertEqual(provider.model, "gpt-x")
+
+    def test_unknown_provider_falls_through_to_generic_escape_hatch(self) -> None:
+        # A provider name with no preset still works if a base URL is supplied.
+        settings.LLM_PROVIDER = "some-brand-new-llm"
+        settings.LLM_API_KEY = "tok"
+        settings.LLM_MODEL = "m"
+        settings.LLM_BASE_URL = "https://new.example/v1"
+
+        provider = get_active_provider()
+
+        self.assertIsInstance(provider, OpenAICompatibleProvider)
+        self.assertEqual(provider.name, "some-brand-new-llm")
+        self.assertEqual(provider.base_url, "https://new.example/v1")
 
 
 class ProviderAdapterTests(unittest.TestCase):
