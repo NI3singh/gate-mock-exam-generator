@@ -5,10 +5,11 @@ Flow:
   1. Load exam config from DB
   2. Load syllabus topics
   3. Calculate question distribution → list of batch specs
-  4. For each batch: call LLM → parse → validate → collect
-  5. Store valid questions in question_bank
-  6. Assemble 65-question exam
-  7. Update exam row with question_ids, question_order, status
+  4. For each batch: call LLM → parse → validate (slot-aligned) → collect
+  5. Retry deficit slots (same section/type/marks/topics) in smaller batches
+  6. Store valid questions in question_bank
+  7. Assemble 65-question exam
+  8. Update exam row with question_ids, question_order, status
 """
 
 import asyncio
@@ -38,7 +39,12 @@ from app.services.llm_service import (
     extract_json_array,
     get_active_llm_metadata,
 )
-from app.services.question_validator import validate_batch
+from app.services.question_validator import (
+    question_slots_from_batch,
+    slot_spec_from_batch,
+    validate_batch_aligned,
+)
+from app.services.tex_sanitize import sanitize_question_fields
 from app.services.exam_assembler import assemble_exam, compute_marks_summary
 
 logger = logging.getLogger(__name__)
@@ -123,21 +129,22 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
 
     # ── 4. Generate questions batch by batch ──
     all_questions: list[dict] = []
+    deficit_slots: list[dict] = []
     completed = 0
-    failed = 0
 
     for batch_idx, batch_spec in enumerate(batches):
         try:
             raw = await _generate_one_batch(batch_spec)
-            valid = validate_batch(raw, expected_section=batch_spec["section_name"])
+            valid, batch_deficit = validate_batch_aligned(
+                raw, batch_spec, expected_section=batch_spec["section_name"]
+            )
 
-            # Tag each question with paper
             for q in valid:
                 q["_paper"] = exam.paper if batch_spec["is_ga"] is False else "GA"
 
             all_questions.extend(valid)
             completed += len(valid)
-            failed += batch_spec["count"] - len(valid)
+            deficit_slots.extend(batch_deficit)
 
             logger.info(
                 f"Batch {batch_idx + 1}/{len(batches)}: "
@@ -146,20 +153,39 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
 
         except Exception as exc:
             logger.error(f"Batch {batch_idx + 1} failed entirely: {exc}")
-            failed += batch_spec["count"]
+            for slot_type in question_slots_from_batch(batch_spec):
+                deficit_slots.append(slot_spec_from_batch(batch_spec, slot_type))
 
-        # Update progress
-        exam.generation_progress = {
-            "total": GATE_TOTAL_QUESTIONS,
-            "completed": min(completed, GATE_TOTAL_QUESTIONS),
-            "failed": failed,
-            "batch": f"{batch_idx + 1}/{len(batches)}",
-        }
-        await db.commit()
+        await _update_generation_progress(
+            db,
+            exam,
+            completed=completed,
+            deficit=len(deficit_slots),
+            batch=f"{batch_idx + 1}/{len(batches)}",
+            phase="generating",
+        )
 
     logger.info(
+        f"Primary pass done: {len(all_questions)} valid, "
+        f"{len(deficit_slots)} deficit slot(s)"
+    )
+
+    # ── 4b. Retry deficit slots (same section / type / marks / topics) ──
+    if deficit_slots and len(all_questions) < GATE_TOTAL_QUESTIONS:
+        retried = await _retry_deficit_slots(
+            db=db,
+            exam=exam,
+            all_questions=all_questions,
+            deficit_slots=deficit_slots,
+            target=GATE_TOTAL_QUESTIONS,
+        )
+        completed = len(all_questions)
+        deficit_slots = retried
+
+    failed = len(deficit_slots)
+    logger.info(
         f"Generation done: {len(all_questions)} valid questions "
-        f"({completed} completed, {failed} failed)"
+        f"({completed} completed, {failed} still missing after retries)"
     )
 
     if len(all_questions) < 20:
@@ -199,6 +225,7 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
         "total": GATE_TOTAL_QUESTIONS,
         "completed": len(question_order),
         "failed": failed,
+        "phase": "complete",
     }
     await db.commit()
 
@@ -252,6 +279,7 @@ def _build_batch_plan(
         "marks": 1,
         "count": GA_1MARK,
         "types": {"MCQ": GA_1MARK},
+        "question_slots": ["MCQ"] * GA_1MARK,
         "difficulty": difficulty if difficulty != "auto" else "easy",
     })
     batches.append({
@@ -262,6 +290,7 @@ def _build_batch_plan(
         "marks": 2,
         "count": GA_2MARK,
         "types": {"MCQ": GA_2MARK},
+        "question_slots": ["MCQ"] * GA_2MARK,
         "difficulty": difficulty if difficulty != "auto" else "medium",
     })
 
@@ -328,6 +357,7 @@ def _build_batch_plan(
                     "marks": marks_val,
                     "count": len(chunk),
                     "types": type_counts,
+                    "question_slots": list(chunk),
                     "difficulty": diff_level,
                 })
 
@@ -369,14 +399,11 @@ async def _generate_one_batch(batch_spec: dict) -> list[dict]:
     is_ga = batch_spec["is_ga"]
     prompt_template = _GA_PROMPT if is_ga else _BATCH_PROMPT
 
-    # Build the question specs text
-    specs_lines = []
-    idx = 1
-    for qtype, count in batch_spec["types"].items():
-        for _ in range(count):
-            specs_lines.append(f"{idx}. {qtype}, {batch_spec['marks']} mark(s)")
-            idx += 1
-
+    slots = question_slots_from_batch(batch_spec)
+    specs_lines = [
+        f"{idx}. {qtype}, {batch_spec['marks']} mark(s)"
+        for idx, qtype in enumerate(slots, start=1)
+    ]
     question_specs = "\n".join(specs_lines)
 
     # Build topics list
@@ -423,6 +450,192 @@ async def _generate_one_batch(batch_spec: dict) -> list[dict]:
     return questions
 
 
+async def _update_generation_progress(
+    db: AsyncSession,
+    exam: Exam,
+    *,
+    completed: int,
+    deficit: int,
+    batch: str,
+    phase: str,
+    retry_round: int | None = None,
+) -> None:
+    progress: dict = {
+        "total": GATE_TOTAL_QUESTIONS,
+        "completed": min(completed, GATE_TOTAL_QUESTIONS),
+        "failed": deficit,
+        "batch": batch,
+        "phase": phase,
+    }
+    if retry_round is not None:
+        progress["retry_round"] = retry_round
+    exam.generation_progress = progress
+    await db.commit()
+
+
+def _slot_group_key(slot: dict) -> tuple:
+    return (
+        slot["section_name"],
+        slot["marks"],
+        slot["difficulty"],
+        slot["is_ga"],
+        tuple(slot["topics"]),
+    )
+
+
+def _group_deficit_for_retry(
+    slots: list[dict],
+    max_size: int,
+) -> list[list[dict]]:
+    """Group deficit slots into small retry batches with matching syllabus context."""
+    if not slots:
+        return []
+
+    groups: list[list[dict]] = []
+    current: list[dict] = []
+    current_key = None
+
+    for slot in slots:
+        key = _slot_group_key(slot)
+        if current and (key != current_key or len(current) >= max_size):
+            groups.append(current)
+            current = []
+        current.append(slot)
+        current_key = key
+
+    if current:
+        groups.append(current)
+    return groups
+
+
+def _batch_spec_from_deficit_group(group: list[dict]) -> dict:
+    """Build a generation batch spec from one or more deficit slots."""
+    first = group[0]
+    slots = [s["question_type"] for s in group]
+    type_counts: dict[str, int] = {}
+    for qtype in slots:
+        type_counts[qtype] = type_counts.get(qtype, 0) + 1
+
+    return {
+        "section_name": first["section_name"],
+        "paper": first["paper"],
+        "is_ga": first["is_ga"],
+        "topics": list(first["topics"]),
+        "marks": first["marks"],
+        "count": len(slots),
+        "types": type_counts,
+        "question_slots": slots,
+        "difficulty": first["difficulty"],
+    }
+
+
+async def _retry_deficit_slots(
+    db: AsyncSession,
+    exam: Exam,
+    all_questions: list[dict],
+    deficit_slots: list[dict],
+    target: int,
+) -> list[dict]:
+    """
+    Retry generation for deficit slots after the primary pass.
+
+    Returns the list of slots that could not be filled after all retry rounds.
+    Mutates *all_questions* in place when retries succeed.
+    """
+    remaining = list(deficit_slots)
+    max_rounds = settings.GENERATION_DEFICIT_MAX_ROUNDS
+    batch_size = max(1, settings.GENERATION_DEFICIT_BATCH_SIZE)
+    round_delay = max(0, settings.GENERATION_DEFICIT_ROUND_DELAY_SECONDS)
+
+    logger.info(
+        "Starting deficit retry: %s slot(s) to fill (have %s/%s)",
+        len(remaining),
+        len(all_questions),
+        target,
+    )
+
+    for retry_round in range(1, max_rounds + 1):
+        if not remaining or len(all_questions) >= target:
+            break
+
+        if retry_round > 1 and round_delay > 0:
+            wait = round_delay * retry_round
+            logger.info("Deficit retry round %s: waiting %ss before retry", retry_round, wait)
+            await asyncio.sleep(wait)
+
+        next_remaining: list[dict] = []
+        groups = _group_deficit_for_retry(remaining, batch_size)
+        logger.info(
+            "Deficit retry round %s/%s: %s slot(s) in %s group(s)",
+            retry_round,
+            max_rounds,
+            len(remaining),
+            len(groups),
+        )
+
+        for group_idx, group in enumerate(groups):
+            retry_spec = _batch_spec_from_deficit_group(group)
+            batch_label = f"retry {retry_round}/{max_rounds} · group {group_idx + 1}/{len(groups)}"
+
+            try:
+                raw = await _generate_one_batch(retry_spec)
+                valid, still_failed = validate_batch_aligned(
+                    raw,
+                    retry_spec,
+                    expected_section=retry_spec["section_name"],
+                )
+
+                for q in valid:
+                    q["_paper"] = (
+                        exam.paper if retry_spec["is_ga"] is False else "GA"
+                    )
+
+                all_questions.extend(valid)
+                next_remaining.extend(still_failed)
+
+                logger.info(
+                    "Deficit %s: %s/%s slot(s) filled",
+                    batch_label,
+                    len(valid),
+                    len(group),
+                )
+
+            except Exception as exc:
+                logger.error("Deficit %s failed: %s", batch_label, exc)
+                next_remaining.extend(group)
+                if round_delay > 0:
+                    await asyncio.sleep(round_delay)
+
+            slots_still_pending = len(next_remaining) + sum(
+                len(g) for g in groups[group_idx + 1 :]
+            )
+            await _update_generation_progress(
+                db,
+                exam,
+                completed=len(all_questions),
+                deficit=slots_still_pending,
+                batch=batch_label,
+                phase="retry",
+                retry_round=retry_round,
+            )
+
+        remaining = next_remaining
+        logger.info(
+            "Deficit retry round %s complete: %s slot(s) still missing",
+            retry_round,
+            len(remaining),
+        )
+
+    if remaining:
+        logger.warning(
+            "%s question slot(s) could not be generated after %s retry round(s)",
+            len(remaining),
+            max_rounds,
+        )
+
+    return remaining
+
+
 async def _store_questions(
     db: AsyncSession,
     questions: list[dict],
@@ -433,6 +646,7 @@ async def _store_questions(
     llm_metadata = get_active_llm_metadata()
 
     for q in questions:
+        q = sanitize_question_fields(q)
         qb = QuestionBank(
             id=uuid.uuid4(),
             paper=exam.paper if q.get("section_name") != "General Aptitude" else "GA",

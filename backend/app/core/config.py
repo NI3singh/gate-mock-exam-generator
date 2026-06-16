@@ -57,6 +57,17 @@ class Settings:
     LLM_RETRIES: int = int(os.getenv("LLM_RETRIES", "2"))
     LLM_TIMEOUT_SECONDS: int = int(os.getenv("LLM_TIMEOUT_SECONDS", "120"))
 
+    # Deficit retry: after the main batch pass, regenerate failed/missing slots.
+    GENERATION_DEFICIT_MAX_ROUNDS: int = int(
+        os.getenv("GENERATION_DEFICIT_MAX_ROUNDS", "3")
+    )
+    GENERATION_DEFICIT_BATCH_SIZE: int = int(
+        os.getenv("GENERATION_DEFICIT_BATCH_SIZE", "2")
+    )
+    GENERATION_DEFICIT_ROUND_DELAY_SECONDS: int = int(
+        os.getenv("GENERATION_DEFICIT_ROUND_DELAY_SECONDS", "5")
+    )
+
     # PDF / LaTeX
     LATEX_BUILD_URL: str = os.getenv(
         "LATEX_BUILD_URL", "https://latex.ytotech.com/builds/sync"

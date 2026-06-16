@@ -14,6 +14,8 @@ interface ProgressData {
   failed: number;
   batch?: string | null;
   error?: string | null;
+  phase?: "generating" | "retry" | "complete" | null;
+  retry_round?: number | null;
 }
 
 interface StatusResponse {
@@ -211,8 +213,18 @@ export default function ExamProgress() {
             {progress.failed > 0 && (
               <div className="mt-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-700">
                 <span className="font-medium">Note:</span>{" "}
-                {progress.failed} question(s) failed validation and will be
-                retried or skipped. This is normal.
+                {progress.phase === "retry" ? (
+                  <>
+                    Retrying {progress.failed} missing question(s)
+                    {progress.retry_round ? ` (round ${progress.retry_round})` : ""}
+                    …
+                  </>
+                ) : (
+                  <>
+                    {progress.failed} question(s) failed and will be retried after
+                    the main pass.
+                  </>
+                )}
               </div>
             )}
 
@@ -231,7 +243,11 @@ export default function ExamProgress() {
               <Step
                 done={progress.completed >= progress.total}
                 active={progress.completed >= 10 && progress.completed < progress.total}
-                label={`Generating Subject questions (${Math.max(0, progress.completed - 10)}/55)`}
+                label={
+                  progress.phase === "retry"
+                    ? `Retrying missing questions (${progress.completed}/${progress.total})`
+                    : `Generating Subject questions (${Math.max(0, progress.completed - 10)}/55)`
+                }
               />
               <Step
                 done={false}
