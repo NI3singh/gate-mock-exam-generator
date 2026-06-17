@@ -9,23 +9,41 @@
 Full-length, AI-generated GATE mock exams for **Computer Science (CS)** and **Data Science & AI (DA)** —
 taken in an authentic exam interface, graded instantly, and analyzed down to the topic level.
 
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white&labelColor=20232a)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white&labelColor=20232a)](https://www.typescriptlang.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white&labelColor=20232a)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-4169E1?logo=postgresql&logoColor=white&labelColor=20232a)](https://www.postgresql.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white&labelColor=20232a)](https://tailwindcss.com/)
-[![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?logo=firebase&logoColor=black&labelColor=20232a)](https://firebase.google.com/)
-[![Remotion](https://img.shields.io/badge/Remotion-video-4290F5?logo=react&logoColor=white&labelColor=20232a)](https://www.remotion.dev/)
+<p>
+  <a href="https://react.dev">
+    <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React">
+  </a>
 
-<br/>
+  <a href="https://www.typescriptlang.org/">
+    <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+  </a>
 
-**🎬 Watch the website tour** *(click the preview)*
+  <a href="https://fastapi.tiangolo.com/">
+    <img src="https://img.shields.io/badge/FastAPI-Async-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
+  </a>
 
-<a href="https://youtu.be/NFoiecE-uYs?si=tLaJnazA-xBl4AEt" target="_blank">
-  <img src="docs/tour-poster.png" alt="Watch the demo" />
+  <a href="https://www.postgresql.org/">
+    <img src="https://img.shields.io/badge/PostgreSQL-14+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  </a>
+
+  <a href="https://tailwindcss.com/">
+    <img src="https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
+  </a>
+
+  <a href="https://firebase.google.com/">
+    <img src="https://img.shields.io/badge/Firebase-Auth-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase">
+  </a>
+</p>
+
+<br>
+
+## 🎬 Watch the Website Tour
+
+<a href="https://youtu.be/NFoiecE-uYs?si=tLaJnazA-xBl4AEt">
+  <img src="docs/tour-poster.png" alt="Watch the demo">
 </a>
 
-*[`docs/website-tour.mp4`](docs/website-tour.mp4) — a 40-second walkthrough of the live product, rendered with Remotion from real app screenshots.*
+*`docs/website-tour.mp4` — a 40-second walkthrough of the live product, rendered with Remotion from real app screenshots.*
 
 </div>
 
