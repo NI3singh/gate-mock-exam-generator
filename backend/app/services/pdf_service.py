@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.schemas.attempt import AttemptDetailResponse
 from app.services.attempt_detail_service import build_attempt_detail
+from app.services.pdf_latex_render import latex_escape_metadata, render_mixed_latex_for_pdf
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
@@ -29,46 +30,14 @@ _JINJA = Environment(
 
 
 def _latex_text(value: Any) -> str:
-    text = "" if value is None else str(value)
-    replacements = {
-        "\\": r"\textbackslash{}",
-        "&": r"\&",
-        "%": r"\%",
-        "$": r"\$",
-        "#": r"\#",
-        "_": r"\_",
-        "{": r"\{",
-        "}": r"\}",
-        "~": r"\textasciitilde{}",
-        "^": r"\textasciicircum{}",
-    }
-    return "".join(replacements.get(char, char) for char in text)
+    return latex_escape_metadata(value)
 
 
 _JINJA.filters["latex_text"] = _latex_text
 
 
 def _render_mixed_latex(text: str | None) -> str:
-    if not text:
-        return ""
-
-    parts: list[str] = []
-    display_chunks = re.split(r"(\$\$[\s\S]*?\$\$)", text)
-
-    for chunk in display_chunks:
-        if chunk.startswith("$$") and chunk.endswith("$$") and len(chunk) > 4:
-            parts.append(chunk)
-            continue
-
-        inline_chunks = re.split(r"(\$[^$\n]+?\$)", chunk)
-        for piece in inline_chunks:
-            if piece.startswith("$") and piece.endswith("$") and len(piece) > 2:
-                parts.append(piece)
-            else:
-                escaped = _latex_text(piece)
-                parts.append(escaped.replace("\r\n", "\n").replace("\n", "\\\\\n"))
-
-    return "".join(parts)
+    return render_mixed_latex_for_pdf(text)
 
 
 def _choice_label(index: int) -> str:
@@ -109,12 +78,12 @@ def _format_correct_answer_tex(solution: dict[str, Any]) -> str:
         ]
         return f"Options {', '.join(indices)}" if indices else "N/A"
 
-    value = _latex_text(correct_answer.get("value", ""))
+    value = latex_escape_metadata(correct_answer.get("value", ""))
     tolerance = correct_answer.get("tolerance")
     if tolerance is None:
         return value or "N/A"
 
-    return f"{value} (tolerance $\\pm {_latex_text(tolerance)}$)"
+    return f"{value} (tolerance \\(\\pm {latex_escape_metadata(tolerance)}\\))"
 
 
 def _listings_language(language: str | None) -> str:
@@ -231,6 +200,7 @@ def _extract_compile_error(response: httpx.Response) -> str:
 
 
 async def _compile_latex_to_pdf(tex_content: str) -> bytes:
+    expected_sections = tex_content.count(r"\section*{Question")
     payload = {
         "compiler": settings.LATEX_COMPILER,
         "resources": [
@@ -253,24 +223,49 @@ async def _compile_latex_to_pdf(tex_content: str) -> bytes:
     async with httpx.AsyncClient(timeout=LATEX_TIMEOUT) as client:
         response = await client.post(settings.LATEX_BUILD_URL, json=payload)
 
+    content_type = response.headers.get("content-type", "").lower()
+
     if response.status_code >= 400:
         raise RuntimeError(
             f"LaTeX.online request failed with status {response.status_code}: "
             f"{_extract_compile_error(response)}"
         )
 
-    if response.content.startswith(b"%PDF"):
-        return response.content
+    if not response.content.startswith(b"%PDF"):
+        raise RuntimeError(
+            "LaTeX compilation did not return a PDF: "
+            f"{_extract_compile_error(response)}"
+        )
 
-    raise RuntimeError(
-        "LaTeX compilation did not return a PDF: "
-        f"{_extract_compile_error(response)}"
-    )
+    # Reject truncated PDFs when the compiler reports failure in JSON metadata.
+    if "application/json" in content_type:
+        try:
+            meta = response.json()
+            status = str(meta.get("status", "")).lower()
+            if status in {"error", "failed", "failure"}:
+                raise RuntimeError(
+                    "LaTeX compilation failed: "
+                    f"{_extract_compile_error(response)}"
+                )
+        except json.JSONDecodeError:
+            pass
+
+    if expected_sections >= 10 and len(response.content) < 50_000:
+        raise RuntimeError(
+            f"LaTeX PDF looks truncated ({len(response.content)} bytes for "
+            f"{expected_sections} questions). Check the LaTeX log."
+        )
+
+    return response.content
 
 
 def _pdf_path_for_attempt(attempt_id: str) -> Path:
     GENERATED_PDFS_DIR.mkdir(parents=True, exist_ok=True)
     return GENERATED_PDFS_DIR / f"solutions_{attempt_id}.pdf"
+
+
+def _pdf_meta_path(pdf_path: Path) -> Path:
+    return pdf_path.with_suffix(".meta")
 
 
 async def generate_solutions_pdf(
@@ -280,12 +275,31 @@ async def generate_solutions_pdf(
     *,
     force_regenerate: bool = False,
 ) -> Path:
+    detail = await build_attempt_detail(db, attempt_id, user_id)
+    solution_count = len(detail.solutions)
+
     pdf_path = _pdf_path_for_attempt(attempt_id)
-    if not force_regenerate and pdf_path.exists() and pdf_path.stat().st_size > 0:
+    meta_path = _pdf_meta_path(pdf_path)
+
+    cached_count: int | None = None
+    if meta_path.exists():
+        try:
+            cached_count = int(meta_path.read_text(encoding="utf-8").strip())
+        except ValueError:
+            cached_count = None
+
+    if (
+        not force_regenerate
+        and pdf_path.exists()
+        and pdf_path.stat().st_size > 0
+        and cached_count == solution_count
+        and solution_count >= detail.total_questions
+        and pdf_path.stat().st_size >= max(50_000, solution_count * 800)
+    ):
         return pdf_path
 
-    detail = await build_attempt_detail(db, attempt_id, user_id)
     tex_content = render_solution_key_tex(detail)
     pdf_bytes = await _compile_latex_to_pdf(tex_content)
     pdf_path.write_bytes(pdf_bytes)
+    meta_path.write_text(str(solution_count), encoding="utf-8")
     return pdf_path

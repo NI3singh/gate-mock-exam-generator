@@ -10,30 +10,11 @@ from app.models.attempt import Attempt
 from app.models.exam import Exam
 from app.models.question_bank import QuestionBank
 from app.schemas.attempt import AttemptDetailResponse, SolutionItem, ViolationSummary
-
-
-def _normalize_question_refs(question_order_raw: list[Any]) -> list[dict[str, Any]]:
-    refs: list[dict[str, Any]] = []
-
-    for idx, entry in enumerate(question_order_raw or []):
-        if isinstance(entry, dict) and entry.get("question_id"):
-            refs.append(
-                {
-                    "qno": int(entry.get("qno") or idx + 1),
-                    "question_id": str(entry["question_id"]),
-                }
-            )
-            continue
-
-        if entry:
-            refs.append(
-                {
-                    "qno": idx + 1,
-                    "question_id": str(entry),
-                }
-            )
-
-    return refs
+from app.services.exam_question_refs import (
+    lookup_response,
+    resolve_exam_question_refs,
+    section_bucket,
+)
 
 
 async def build_attempt_detail(
@@ -58,7 +39,7 @@ async def build_attempt_detail(
     if exam is None:
         raise ValueError("Exam not found.")
 
-    question_refs = _normalize_question_refs(exam.question_order or [])
+    question_refs = resolve_exam_question_refs(exam)
     question_ids = [ref["question_id"] for ref in question_refs]
 
     q_result = await db.execute(
@@ -76,7 +57,7 @@ async def build_attempt_detail(
         if question is None:
             continue
 
-        user_answer = responses.get(q_id)
+        user_answer = lookup_response(responses, q_id)
         correct_answer = question.answer
 
         is_correct = False
@@ -110,11 +91,9 @@ async def build_attempt_detail(
                 qno=ref["qno"],
                 question_type=question.question_type,
                 marks=question.marks,
-                section=(
-                    "GA"
-                    if (question.section_name or "").strip().lower()
-                    in ("ga", "general aptitude")
-                    else "Subject"
+                section=section_bucket(
+                    question.section_name,
+                    order_section=ref.get("section"),
                 ),
                 section_name=question.section_name,
                 topic=question.topic,

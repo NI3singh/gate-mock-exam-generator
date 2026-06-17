@@ -7,6 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.attempt import Attempt
 from app.models.exam import Exam
 from app.models.question_bank import QuestionBank
+from app.services.exam_question_refs import (
+    lookup_response,
+    resolve_exam_question_refs,
+    section_bucket,
+)
 
 
 # ── Marking functions ──────────────────────────────────────────────────────────
@@ -89,17 +94,13 @@ async def grade_attempt(db: AsyncSession, attempt_id: str) -> dict[str, Any]:
     if exam is None:
         raise ValueError(f"Exam {attempt.exam_id} not found")
 
-    # FIX: question_order is stored as list[dict] e.g.
-    # [{"qno": 1, "question_id": "uuid-str", "marks": 1, ...}, ...]
-    # Extract the string UUID from each entry.
-    question_order_raw: list = exam.question_order or []
-    question_order: list[str] = [
-        entry["question_id"]
-        for entry in question_order_raw
-        if isinstance(entry, dict) and entry.get("question_id")
-    ]
+    question_refs = resolve_exam_question_refs(exam)
+    question_order: list[str] = [ref["question_id"] for ref in question_refs]
 
     responses: dict[str, Any] = attempt.responses or {}
+
+    if not question_order:
+        raise ValueError(f"Exam {exam.id} has no resolvable question references")
 
     # 3. Fetch all question bank rows for this exam (in one query)
     q_result = await db.execute(
@@ -130,24 +131,28 @@ async def grade_attempt(db: AsyncSession, attempt_id: str) -> dict[str, Any]:
     # Topic analysis
     topic_data: dict[str, dict[str, Any]] = {}
 
+    ref_by_id = {ref["question_id"]: ref for ref in question_refs}
+
     for q_id in question_order:
         q: QuestionBank | None = question_map.get(q_id)
+        ref = ref_by_id.get(q_id, {})
         if q is None:
+            # Still count missing rows so totals stay consistent.
+            total_unanswered += 1
+            bucket = section_bucket(ref.get("section_name"), order_section=ref.get("section"))
+            section_scores[bucket]["unanswered"] += 1
             continue
 
-        user_answer = responses.get(q_id)
+        user_answer = lookup_response(responses, q_id)
         correct = q.answer
         marks = q.marks
         qtype = q.question_type
-        section = q.section_name  # "GA" or a subject section name
+        section = q.section_name
         topic = q.topic
 
-        # Determine section bucket. GA questions are stored with
-        # section_name == "General Aptitude" (not "GA"), so normalize.
-        section_bucket = (
-            "GA"
-            if (section or "").strip().lower() in ("ga", "general aptitude")
-            else "Subject"
+        section_bucket_name = section_bucket(
+            section,
+            order_section=ref.get("section"),
         )
 
         # Grade per type
@@ -161,22 +166,22 @@ async def grade_attempt(db: AsyncSession, attempt_id: str) -> dict[str, Any]:
             score, is_correct, is_wrong = 0.0, False, False
 
         total_score += score
-        section_scores[section_bucket]["max_score"] += marks
+        section_scores[section_bucket_name]["max_score"] += marks
 
         if is_correct:
             total_correct += 1
-            section_scores[section_bucket]["correct"] += 1
+            section_scores[section_bucket_name]["correct"] += 1
             type_scores[qtype]["correct"] += 1
         elif is_wrong:
             total_wrong += 1
-            section_scores[section_bucket]["wrong"] += 1
+            section_scores[section_bucket_name]["wrong"] += 1
             type_scores[qtype]["wrong"] += 1
         else:
             total_unanswered += 1
-            section_scores[section_bucket]["unanswered"] += 1
+            section_scores[section_bucket_name]["unanswered"] += 1
             type_scores[qtype]["unanswered"] += 1
 
-        section_scores[section_bucket]["score"] += score
+        section_scores[section_bucket_name]["score"] += score
         type_scores[qtype]["score"] += score
 
         # Topic tracking

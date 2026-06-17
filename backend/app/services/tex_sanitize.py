@@ -36,6 +36,12 @@ def repair_json_escape_corruption(text: str) -> str:
         out = out.replace(ctrl + suffix, fixed)
     # Visible corruption when control chars were stripped
     out = re.sub(r"(?<![\\a-zA-Z{])ext\{", r"\\text{", out)
+    out = re.sub(r"(?<![\\a-zA-Z])text\{", r"\\text{", out)
+    out = re.sub(
+        r"(?<![\\a-zA-Z])text([A-Z][A-Za-z]*)\(([^)]+)\)",
+        r"\\text{\1(\2)}",
+        out,
+    )
     out = re.sub(r"(?<![\\a-zA-Z])orall\b", r"\\forall", out)
     out = re.sub(r"(?<![\\a-zA-Z])ightarrow\b", r"\\rightarrow", out)
     out = re.sub(r"(?<![\\a-zA-Z])rac\{", r"\\frac{", out)

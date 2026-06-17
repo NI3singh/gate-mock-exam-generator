@@ -136,11 +136,15 @@ async def log_attempt_event(
 )
 async def submit_attempt(
     attempt_id: str,
+    body: AttemptSaveRequest | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Submits an exam attempt, triggers grading, and returns the result.
+
+    Accepts an optional final ``responses`` / ``question_statuses`` payload so
+    answers submitted after the last auto-save are not lost.
     """
     result = await db.execute(
         select(Attempt).where(
@@ -162,6 +166,11 @@ async def submit_attempt(
             detail="Attempt has already been submitted.",
         )
 
+    if body is not None:
+        attempt.responses = body.responses
+        attempt.question_statuses = body.question_statuses
+        await db.flush()
+
     try:
         result_data = await grade_attempt(db, attempt_id)
     except Exception as exc:
@@ -172,6 +181,56 @@ async def submit_attempt(
 
     await refresh_user_analytics_safely(db, user.id)
 
+    return AttemptSubmitResponse(**result_data)
+
+
+@router.post(
+    "/{attempt_id}/regrade",
+    response_model=AttemptSubmitResponse,
+    summary="Recompute score from saved responses (fixes stale breakdowns)",
+)
+async def regrade_attempt_endpoint(
+    attempt_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-run grading for a submitted attempt using stored responses."""
+    result = await db.execute(
+        select(Attempt).where(
+            Attempt.id == attempt_id,
+            Attempt.user_id == user.id,
+        )
+    )
+    attempt = result.scalar_one_or_none()
+    if attempt is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found.")
+    if not attempt.submitted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Attempt is not submitted yet.",
+        )
+
+    attempt.submitted = False
+    await db.flush()
+
+    try:
+        result_data = await grade_attempt(db, attempt_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Regrade failed: {exc}",
+        )
+
+    from app.services.pdf_service import _pdf_meta_path, _pdf_path_for_attempt
+
+    pdf_path = _pdf_path_for_attempt(attempt_id)
+    meta_path = _pdf_meta_path(pdf_path)
+    if pdf_path.exists():
+        pdf_path.unlink(missing_ok=True)
+    if meta_path.exists():
+        meta_path.unlink(missing_ok=True)
+
+    await refresh_user_analytics_safely(db, user.id)
     return AttemptSubmitResponse(**result_data)
 
 

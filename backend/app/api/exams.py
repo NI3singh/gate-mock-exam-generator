@@ -16,6 +16,7 @@ from app.models.exam import Exam
 from app.models.attempt import Attempt
 from app.models.syllabus import Syllabus
 from app.models.question_bank import QuestionBank
+from app.services.exam_question_refs import resolve_exam_question_refs, section_bucket
 from app.schemas.exam import (
     ExamGenerateRequest,
     ExamGenerateResponse,
@@ -401,38 +402,21 @@ async def get_exam(
             detail="Exam has no questions assembled yet.",
         )
 
-    # ── 2. Build question_id → order_entry map ──
-    # Newly generated exams always carry valid question_id values in
-    # question_order. Legacy exams generated before that fix may still have
-    # empty question_id strings stored in the DB, so fall back to
-    # exam.question_ids if question_order yields no valid IDs.
-    question_order: list[dict] = exam.question_order or []
-    id_to_order: dict[str, dict] = {
-        str(entry["question_id"]): entry
-        for entry in question_order
-        if entry.get("question_id")
-    }
-
-    # Use exam.question_ids as source of truth if id_to_order is empty
-    if not id_to_order and exam.question_ids:
-        for i, qid in enumerate(exam.question_ids):
-            id_to_order[str(qid)] = {"qno": i + 1, "section": "Subject"}
-
-    # ── 3. Fetch questions from question_bank ──
-    valid_ids = list(id_to_order.keys())
-    if not valid_ids:
+    # ── 2. Resolve ordered question references (merge order + question_ids) ──
+    question_refs = resolve_exam_question_refs(exam)
+    if not question_refs:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No valid question IDs found in this exam.",
         )
 
-    # Convert string UUIDs to uuid objects for SQLAlchemy query
+    # ── 3. Fetch questions from question_bank ──
     uuid_ids = []
-    for qid in valid_ids:
+    for ref in question_refs:
         try:
-            uuid_ids.append(uuid_module.UUID(qid))
+            uuid_ids.append(uuid_module.UUID(ref["question_id"]))
         except ValueError:
-            pass
+            continue
 
     if not uuid_ids:
         raise HTTPException(
@@ -449,19 +433,24 @@ async def get_exam(
 
     # ── 4. Build ordered list without answers ──
     questions: list[QuestionItem] = []
-    for qid_str in valid_ids:
-        entry = id_to_order[qid_str]
+    for ref in question_refs:
+        qid_str = ref["question_id"]
         q = questions_map.get(qid_str)
         if not q:
             continue
 
+        ui_section = ref.get("section") or section_bucket(
+            q.section_name,
+            order_section=ref.get("section"),
+        )
+
         questions.append(
             QuestionItem(
                 id=str(q.id),
-                qno=entry.get("qno", 0),
+                qno=int(ref.get("qno") or 0),
                 question_type=q.question_type,
                 marks=q.marks,
-                section=entry.get("section", "Subject"),
+                section=ui_section,
                 section_name=q.section_name,
                 topic=q.topic,
                 stem_tex=q.stem_tex,
