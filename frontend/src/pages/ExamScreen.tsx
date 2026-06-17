@@ -465,8 +465,12 @@ export default function ExamScreen() {
     if (!attempt?.attempt_id) return;
     setShowSubmitModal(false);
     setSubmittingExam(true);
+    const payload: AttemptSaveRequest = { responses, question_statuses: questionStatuses };
     try {
-      await api.post(`/attempts/${attempt.attempt_id}/submit`, null, {
+      await api.put(`/attempts/${attempt.attempt_id}/save`, payload, {
+        suppressErrorToast: true,
+      });
+      await api.post(`/attempts/${attempt.attempt_id}/submit`, payload, {
         suppressErrorToast: true,
       });
       navigate(`/result/${attempt.attempt_id}`);
@@ -474,14 +478,18 @@ export default function ExamScreen() {
       toast.error(getApiErrorMessage(err, "Submission failed. Please try again."));
       setSubmittingExam(false);
     }
-  }, [attempt?.attempt_id, navigate]);
+  }, [attempt?.attempt_id, navigate, responses, questionStatuses]);
 
   const handleAutoSubmit = useCallback(async () => {
     if (!attempt?.attempt_id) return;
     toast.error("Time's up! Submitting your exam...");
     setSubmittingExam(true);
+    const payload: AttemptSaveRequest = { responses, question_statuses: questionStatuses };
     try {
-      await api.post(`/attempts/${attempt.attempt_id}/submit`, null, {
+      await api.put(`/attempts/${attempt.attempt_id}/save`, payload, {
+        suppressErrorToast: true,
+      });
+      await api.post(`/attempts/${attempt.attempt_id}/submit`, payload, {
         suppressErrorToast: true,
       });
       navigate(`/result/${attempt.attempt_id}`);
@@ -489,7 +497,7 @@ export default function ExamScreen() {
       // Fallback: navigate anyway so user sees result
       navigate(`/result/${attempt.attempt_id}`);
     }
-  }, [attempt?.attempt_id, navigate]);
+  }, [attempt?.attempt_id, navigate, responses, questionStatuses]);
 
   // ── Load exam questions ─────────────────────────────────────────────────────
   useEffect(() => {

@@ -297,7 +297,7 @@ export default function QuestionBankBrowser() {
                           Solution
                         </h3>
                         <div className="mt-3 text-sm leading-7 text-gray-800">
-                          <MathText text={item.solution_tex} block />
+                          <MathText text={item.solution_tex} block solution />
                         </div>
                       </div>
                     </div>

@@ -447,6 +447,7 @@ export default function SolutionsReview() {
                     currentSolution.solution_tex?.trim() || "Solution not available for this question."
                   }
                   block
+                  solution
                 />
               </div>
             </div>

@@ -48,12 +48,18 @@ import {
 {
   const sol =
     "Let total students = 60.\\nGiven ratio of boys to girls who play cricket is 3:2.\\nLet C be set of cricket players, H be set of hockey players.\\nBy inclusion-exclusion: |C \\cup H| = |C| + |H| - |C \\cap H|.";
-  const html = renderRichText(sol);
+  const html = renderRichText(sol, { solutionLayout: true });
   assert.ok(html, "should render solution");
   assert.ok(html!.includes("math-paragraph"), "should use paragraphs");
-  assert.ok(html!.includes("<br/>"), "should have line breaks");
+  assert.ok((html!.match(/math-paragraph/g) ?? []).length >= 3, "should split on each line");
   assert.ok(html!.includes("katex"), "should render \\cup and \\cap");
   assert.ok(!html!.includes("\\nGiven"), "literal \\n should be gone");
+}
+
+// ── Bare textFlies corruption ─────────────────────────────────────────────────
+{
+  const fixed = prepareMathText("prove textFlies(Tweety)?");
+  assert.ok(fixed.includes("\\text{Flies(Tweety)}"), "should repair textFlies");
 }
 
 // ── Over-escaped backslashes ──────────────────────────────────────────────────

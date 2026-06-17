@@ -13,6 +13,11 @@ html {
 .math-text {
   overflow-wrap: break-word;
   word-break: normal;
+  min-width: 0;
+  max-width: 100%;
+}
+.math-text-solution .math-paragraph {
+  margin: 0 0 0.5rem;
 }
 .math-text .math-paragraph {
   margin: 0 0 0.75rem;
@@ -25,7 +30,6 @@ html {
   padding-left: 0.5rem;
   border-left: 2px solid rgba(59, 130, 246, 0.35);
 }
-/* Display math ($$..$$ or \[..\]) — centered, scrollable block. */
 .math-text .math-display {
   margin: 0.6rem 0;
   overflow-x: auto;
@@ -35,17 +39,30 @@ html {
 .math-text .math-display > .katex-display {
   margin: 0;
 }
-/* NEVER break inside KaTeX spans — word-break on parent was splitting each
-   character onto its own line. Scroll horizontally for long formulas. */
-.math-text .math-inline,
-.math-text .math-display {
-  word-break: normal;
-  overflow-wrap: normal;
+/* Prevent KaTeX from breaking character-by-character (vertical letter stacks). */
+.math-text .math-inline {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  vertical-align: middle;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+.math-text .math-display,
+.math-text .math-inline {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+.math-text .katex,
+.math-text .katex * {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
 }
 .math-text .katex {
   white-space: nowrap;
-  word-break: normal;
-  overflow-wrap: normal;
+}
+.math-text .math-display .katex {
+  white-space: normal;
 }
 .math-text .math-error {
   color: #dc2626;

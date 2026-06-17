@@ -1,12 +1,6 @@
 /**
  * Rich text + math renderer shared by the exam screen, solutions review, and
  * question bank.
- *
- * Generated content is often messy:
- *   • JSON escape sequences corrupt LaTeX (`\text` → tab+"ext", `\forall` → ff+"orall")
- *   • Solutions use literal `\n` instead of real newlines
- *   • Math is sometimes bare (no `$…$`), sometimes over-escaped (`\\forall`)
- *   • Long inline LaTeX blocks are easier to read as one wrapped expression
  */
 
 import katex from "katex";
@@ -18,15 +12,16 @@ function isLetter(c: string): boolean {
 const MATH_SYMBOL = /[+\-*/=<>^_|().,:;!'~[\]?]/;
 const DIGIT = /[0-9]/;
 
-/** LaTeX commands that start with `\n` — do NOT treat the `\n` as a newline. */
-const LATEX_N_PREFIX =
-  /^(?:eq|eg(?:medspace|thickspace|thinspace)?|ot|u|abla|ewline|ewcommand|othing|mid|leftrightarrow|leftarrow|rightarrow|sim|subseteq|supseteq|subset|supset|times|cong|dash|atural|parallel|prec|preceq|succeq|geq|leq|gtr|exists|in|i|e|approx|abla|uances|umber)/;
+/** Detect over-escaped LaTeX inside math delimiters (`\\forall` etc.). */
+const OVER_ESCAPED_CMD_HINT =
+  /\\\\(?:forall|text|frac|cup|cap|neg|rightarrow|leftarrow|times|qquad|leq|geq)/;
 
-/** Repair LaTeX mangled by JSON `\t`, `\r`, `\f`, `\b` escape sequences. */
+const LATEX_N_PREFIX =
+  /^(?:eq|eg(?:medspace|thickspace|thinspace)?|ot|u|abla|ewline|ewcommand|othing|mid|leftrightarrow|leftarrow|rightarrow|sim|subseteq|supseteq|subset|supset|times|cong|dash|atural|parallel|prec|preceq|succeq|geq|leq|gtr|exists|in|i|e|approx|uances|umber)/;
+
 export function repairJsonEscapeCorruption(text: string): string {
   return (
     text
-      // Control-char corruptions from invalid JSON escapes
       .replace(/\u0009exttt\{/g, "\\texttt{")
       .replace(/\u0009extbf\{/g, "\\textbf{")
       .replace(/\u0009extit\{/g, "\\textit{")
@@ -47,16 +42,17 @@ export function repairJsonEscapeCorruption(text: string): string {
       .replace(/\u0008inom\{/g, "\\binom{")
       .replace(/\u0008ig\b/g, "\\big")
       .replace(/\u0008igg\b/g, "\\bigg")
-      // Visible corruption when control chars were stripped entirely
       .replace(/(?<![\\a-zA-Z{])ext\{/g, "\\text{")
+      .replace(/(?<![\\a-zA-Z])text\{/g, "\\text{")
+      .replace(/(?<![\\a-zA-Z])text([A-Z][A-Za-z]*)\(([^)]+)\)/g, "\\text{$1($2)}")
       .replace(/(?<![\\a-zA-Z])imes(?=\b|[({])/g, "\\times")
       .replace(/(?<![\\a-zA-Z])ightarrow\b/g, "\\rightarrow")
       .replace(/(?<![\\a-zA-Z])orall\b/g, "\\forall")
       .replace(/(?<![\\a-zA-Z])rac\{/g, "\\frac{")
+      .replace(/(?<![\\a-zA-Z])neg(?=\\text)/g, "\\neg")
   );
 }
 
-/** Walk `text` and apply `fn` only outside `$…$` / `$$…$$` regions. */
 function outsideMath(text: string, fn: (chunk: string) => string): string {
   let out = "";
   let i = 0;
@@ -90,7 +86,6 @@ function outsideMath(text: string, fn: (chunk: string) => string): string {
   return out;
 }
 
-/** Turn literal `\n` (two chars) into real newlines; keep `\neq`, `\neg`, etc. */
 export function unescapeLiteralNewlines(text: string): string {
   return outsideMath(text, (chunk) =>
     chunk.replace(/\\n/g, (match, offset, whole) => {
@@ -102,20 +97,18 @@ export function unescapeLiteralNewlines(text: string): string {
   );
 }
 
-/** Collapse `\\cmd` → `\cmd` when the whole string looks over-escaped. */
 export function normalizeOverEscapedBackslashes(text: string): string {
-  if (!/\\\\[a-zA-Z{([\]|;]/.test(text)) return text;
+  if (!/\\\\/.test(text)) return text;
   return outsideMath(text, (chunk) => {
-    if (!/\\\\[a-zA-Z]/.test(chunk)) return chunk;
-    // Only collapse when most backslashes are doubled (common LLM mistake).
-    const single = (chunk.match(/(?<!\\)\\[a-zA-Z]/g) || []).length;
-    const doubled = (chunk.match(/\\\\[a-zA-Z]/g) || []).length;
-    if (doubled === 0 || (single > 0 && single >= doubled)) return chunk;
+    if (!/\\\\/.test(chunk)) return chunk;
+    // Collapse \\cmd → \cmd when we see known over-escaped LaTeX commands.
+    if (!/\\\\(?:forall|text|frac|cup|cap|neg|rightarrow|leftarrow|times|qquad|leq|geq)/.test(chunk)) {
+      return chunk;
+    }
     return chunk.replace(/\\\\(?=[a-zA-Z{([\]|;])/g, "\\");
   });
 }
 
-/** Return the index just past the group opened at `pos` (`open`/`close`). */
 function skipBalanced(text: string, pos: number, open: string, close: string): number {
   const n = text.length;
   let depth = 0;
@@ -216,7 +209,6 @@ function findRunEnd(text: string, start: number): number {
   return lastSolid;
 }
 
-/** Merge adjacent bare-LaTeX runs separated only by spacing / clause labels like (1). */
 function mergeAdjacentRuns(text: string, runs: Array<[number, number]>): Array<[number, number]> {
   if (runs.length === 0) return runs;
   const merged: Array<[number, number]> = [runs[0]];
@@ -258,7 +250,6 @@ function collectBareLatexRuns(text: string): Array<[number, number]> {
   return mergeAdjacentRuns(text, runs);
 }
 
-/** Wrap dense bare-LaTeX regions (e.g. whole KB clauses) in `$…$`. */
 function wrapBareLatexRuns(text: string): string {
   const runs = collectBareLatexRuns(text);
   if (runs.length === 0) return text;
@@ -266,21 +257,35 @@ function wrapBareLatexRuns(text: string): string {
   let cursor = 0;
   for (const [start, end] of runs) {
     out += text.slice(cursor, start);
-    let prefix = "";
-    const before = out.slice(-20);
-    const tm = before.match(/([A-Za-z0-9+\-*/=<>|])(\s*)$/);
-    if (tm) {
-      const leadIdx = out.length - tm[0].length;
+
+    let absStart = start;
+    let absEnd = end;
+
+    // Include a single variable/operator immediately before the run (e.g. C in C \cup H).
+    const before = out.match(/([A-Za-z0-9+\-*/=<>|])(\s*)$/);
+    if (before) {
+      const leadIdx = out.length - before[0].length;
       const prev = leadIdx > 0 ? out[leadIdx - 1] : "";
       if (!/[A-Za-z0-9]/.test(prev)) {
         out = out.slice(0, leadIdx);
-        prefix = tm[1] + tm[2];
+        absStart = start - before[1].length - 1;
       }
     }
-    const slice = prefix + text.slice(start, end);
+
+    // Include | … | set/cardinality delimiters when wrapping e.g. |C \cup H|.
+    while (absStart > 0 && /\s/.test(text[absStart - 1])) absStart--;
+    if (absStart > 0 && text[absStart - 1] === "|") absStart--;
+    while (absEnd < text.length && /\s/.test(text[absEnd])) absEnd++;
+    if (absEnd < text.length && text[absEnd] === "|") absEnd++;
+
+    if (absStart < start) {
+      out = out.slice(0, out.length - (start - absStart));
+    }
+
+    const slice = text.slice(absStart, absEnd);
     const useDisplay = slice.length > 80 || /\\qquad|\\begin\{/.test(slice);
     out += (useDisplay ? "$$" : "$") + slice + (useDisplay ? "$$" : "$");
-    cursor = end;
+    cursor = absEnd;
   }
   out += text.slice(cursor);
   return out;
@@ -300,7 +305,11 @@ function escapeHtml(s: string): string {
 
 function renderMath(content: string, displayMode: boolean): string {
   try {
-    return katex.renderToString(content.trim(), {
+    let cleaned = content.trim();
+    if (OVER_ESCAPED_CMD_HINT.test(cleaned)) {
+      cleaned = cleaned.replace(/\\\\(?=[a-zA-Z{([\]|;])/g, "\\");
+    }
+    return katex.renderToString(cleaned, {
       displayMode,
       throwOnError: false,
       trust: false,
@@ -333,9 +342,16 @@ function splitSegments(text: string): Segment[] {
   return segments;
 }
 
-function formatTextBlock(text: string): string {
+function formatTextBlock(text: string, solutionLayout: boolean): string {
   const trimmed = text.replace(/\r\n/g, "\n");
-  const paragraphs = trimmed.split(/\n{2,}/);
+  const paragraphs = solutionLayout
+    ? trimmed.split(/\n+/).map((p) => p.trim()).filter(Boolean)
+    : trimmed.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+
+  if (paragraphs.length === 0 && trimmed.length > 0) {
+    paragraphs.push(trimmed);
+  }
+
   return paragraphs
     .map((para) => {
       const lines = para.split("\n");
@@ -353,13 +369,16 @@ function formatTextBlock(text: string): string {
     .join("");
 }
 
-/** Break very long single-paragraph solutions at sentence boundaries. */
 function expandLongParagraphBreaks(text: string): string {
   if (text.includes("\n") || text.length < 350) return text;
   return text.replace(/\.\s+(?=[A-Z])/g, ".\n\n");
 }
 
-/** Full preprocessing pipeline before KaTeX. Exported for tests. */
+export type RenderOptions = {
+  /** One paragraph per line — best for step-by-step solutions. */
+  solutionLayout?: boolean;
+};
+
 export function prepareMathText(raw: string): string {
   let text = raw ?? "";
   text = repairJsonEscapeCorruption(text);
@@ -371,11 +390,12 @@ export function prepareMathText(raw: string): string {
   return text;
 }
 
-export function renderRichText(raw: string): string | null {
+export function renderRichText(raw: string, options: RenderOptions = {}): string | null {
   try {
     if (!raw) return "";
     const prepared = prepareMathText(raw);
     const segments = splitSegments(prepared);
+    const solutionLayout = options.solutionLayout ?? false;
     return segments
       .map((seg) => {
         if (seg.type === "display") {
@@ -384,7 +404,7 @@ export function renderRichText(raw: string): string | null {
         if (seg.type === "inline") {
           return `<span class="math-inline">${renderMath(seg.content, false)}</span>`;
         }
-        return formatTextBlock(seg.content);
+        return formatTextBlock(seg.content, solutionLayout);
       })
       .join("");
   } catch {
