@@ -206,6 +206,94 @@ def _validate_nat(q: dict) -> tuple[bool, str]:
     return True, "OK"
 
 
+def validate_question_for_slot(
+    q: dict,
+    slot_type: str,
+    slot_marks: int,
+    expected_section: str | None = None,
+) -> tuple[bool, str]:
+    """Validate one LLM output against its planned slot (type + marks)."""
+    is_valid, msg = validate_question(q, expected_section)
+    if not is_valid:
+        return False, msg
+
+    qtype = q.get("question_type")
+    if qtype != slot_type:
+        return False, f"Expected {slot_type}, got {qtype}"
+
+    marks = q.get("marks")
+    if marks != slot_marks:
+        return False, f"Expected {slot_marks} mark(s), got {marks}"
+
+    return True, "OK"
+
+
+def slot_spec_from_batch(batch_spec: dict, question_type: str) -> dict[str, Any]:
+    """Build a single deficit slot record from a batch spec + planned type."""
+    return {
+        "section_name": batch_spec["section_name"],
+        "paper": batch_spec["paper"],
+        "is_ga": batch_spec["is_ga"],
+        "topics": list(batch_spec["topics"]),
+        "marks": batch_spec["marks"],
+        "question_type": question_type,
+        "difficulty": batch_spec["difficulty"],
+    }
+
+
+def question_slots_from_batch(batch_spec: dict) -> list[str]:
+    """Return ordered slot types for a batch (falls back to types dict)."""
+    slots = batch_spec.get("question_slots")
+    if isinstance(slots, list) and slots:
+        return slots
+
+    ordered: list[str] = []
+    for qtype, count in batch_spec.get("types", {}).items():
+        ordered.extend([qtype] * int(count))
+    return ordered[: batch_spec.get("count", len(ordered))]
+
+
+def validate_batch_aligned(
+    questions: list[dict],
+    batch_spec: dict,
+    expected_section: str | None = None,
+) -> tuple[list[dict], list[dict]]:
+    """
+    Validate LLM output against planned batch slots (position-aligned).
+
+    Returns (valid_questions, failed_slot_specs).
+    """
+    slots = question_slots_from_batch(batch_spec)
+    valid: list[dict] = []
+    failed_slots: list[dict] = []
+
+    for i, slot_type in enumerate(slots):
+        if i >= len(questions):
+            failed_slots.append(slot_spec_from_batch(batch_spec, slot_type))
+            logger.warning(
+                "Batch slot %s/%s missing from LLM output (expected %s)",
+                i + 1,
+                len(slots),
+                slot_type,
+            )
+            continue
+
+        q = questions[i]
+        is_valid, msg = validate_question_for_slot(
+            q,
+            slot_type,
+            batch_spec["marks"],
+            expected_section,
+        )
+        if is_valid:
+            valid.append(q)
+        else:
+            logger.warning("Question %s in batch failed validation: %s", i + 1, msg)
+            failed_slots.append(slot_spec_from_batch(batch_spec, slot_type))
+
+    return valid, failed_slots
+
+
 def validate_batch(
     questions: list[dict],
     expected_section: str | None = None,

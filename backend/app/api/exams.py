@@ -239,6 +239,8 @@ async def get_exam_status(
             "failed": progress.get("failed", 0),
             "batch": progress.get("batch"),
             "error": progress.get("error"),
+            "phase": progress.get("phase"),
+            "retry_round": progress.get("retry_round"),
         },
     }
 
