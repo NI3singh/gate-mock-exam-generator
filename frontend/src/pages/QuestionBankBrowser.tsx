@@ -1,71 +1,13 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import katex from "katex";
+import { FormEvent, useEffect, useState } from "react";
 
 import Navbar from "../components/layout/Navbar";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import MathText from "../components/common/MathText";
 import api from "../services/api";
 import type {
   QuestionBankBrowserItem,
   QuestionBankBrowserResponse,
 } from "../types";
-
-function MathText({ text }: { text: string }) {
-  const rendered = useMemo(() => {
-    try {
-      const parts: Array<{ type: "text" | "display" | "inline"; content: string }> = [];
-      const displaySplit = text.split(/(\$\$[\s\S]*?\$\$)/g);
-
-      for (const chunk of displaySplit) {
-        if (chunk.startsWith("$$") && chunk.endsWith("$$") && chunk.length > 4) {
-          parts.push({ type: "display", content: chunk.slice(2, -2) });
-          continue;
-        }
-
-        const inlineSplit = chunk.split(/(\$[^$\n]+?\$)/g);
-        for (const piece of inlineSplit) {
-          if (piece.startsWith("$") && piece.endsWith("$") && piece.length > 2) {
-            parts.push({ type: "inline", content: piece.slice(1, -1) });
-          } else {
-            parts.push({ type: "text", content: piece });
-          }
-        }
-      }
-
-      return parts
-        .map((part) => {
-          if (part.type === "display") {
-            return katex.renderToString(part.content, {
-              displayMode: true,
-              throwOnError: false,
-              trust: false,
-            });
-          }
-          if (part.type === "inline") {
-            return katex.renderToString(part.content, {
-              displayMode: false,
-              throwOnError: false,
-              trust: false,
-            });
-          }
-
-          return part.content
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/\n/g, "<br/>");
-        })
-        .join("");
-    } catch {
-      return null;
-    }
-  }, [text]);
-
-  if (rendered !== null) {
-    return <span dangerouslySetInnerHTML={{ __html: rendered }} />;
-  }
-
-  return <span className="whitespace-pre-wrap">{text}</span>;
-}
 
 type Filters = {
   paper: string;
@@ -303,9 +245,9 @@ export default function QuestionBankBrowser() {
                             ({item.section_name})
                           </span>
                         </p>
-                        <p className="mt-2 text-sm leading-7 text-gray-800">
-                          <MathText text={item.stem_tex} />
-                        </p>
+                        <div className="mt-2 text-sm leading-7 text-gray-800">
+                          <MathText text={item.stem_tex} block />
+                        </div>
                       </div>
 
                       <div className="text-xs text-gray-400">
@@ -355,7 +297,7 @@ export default function QuestionBankBrowser() {
                           Solution
                         </h3>
                         <div className="mt-3 text-sm leading-7 text-gray-800">
-                          <MathText text={item.solution_tex} />
+                          <MathText text={item.solution_tex} block solution />
                         </div>
                       </div>
                     </div>

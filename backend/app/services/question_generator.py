@@ -43,6 +43,7 @@ from app.services.question_validator import (
     slot_spec_from_batch,
     validate_batch_aligned,
 )
+from app.services.tex_sanitize import sanitize_question_fields
 from app.services.exam_assembler import assemble_exam, compute_marks_summary
 
 logger = logging.getLogger(__name__)
@@ -644,6 +645,7 @@ async def _store_questions(
     llm_metadata = get_active_llm_metadata()
 
     for q in questions:
+        q = sanitize_question_fields(q)
         qb = QuestionBank(
             id=uuid.uuid4(),
             paper=exam.paper if q.get("section_name") != "General Aptitude" else "GA",

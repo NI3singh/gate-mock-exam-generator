@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import katex from "katex";
 import Prism from "prismjs";
 import "prismjs/components/prism-c";
 import "prismjs/components/prism-python";
 
 import api, { getApiErrorMessage } from "../services/api";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import MathText from "../components/common/MathText";
 import type {
   AttemptDetailResponse,
   MCQAnswer,
@@ -22,69 +22,6 @@ type NATReviewAnswer = { value: string | number; tolerance?: number };
 function getReviewStatus(solution: SolutionItem): ReviewStatus {
   if (solution.user_answer === null) return "skipped";
   return solution.is_correct ? "correct" : "wrong";
-}
-
-function MathText({ text }: { text: string }) {
-  const rendered = useMemo(() => {
-    try {
-      const parts: Array<{ type: "text" | "display" | "inline"; content: string }> = [];
-      const displaySplit = text.split(/(\$\$[\s\S]*?\$\$)/g);
-
-      for (const chunk of displaySplit) {
-        if (chunk.startsWith("$$") && chunk.endsWith("$$") && chunk.length > 4) {
-          parts.push({ type: "display", content: chunk.slice(2, -2) });
-          continue;
-        }
-
-        const inlineSplit = chunk.split(/(\$[^$\n]+?\$)/g);
-        for (const piece of inlineSplit) {
-          if (piece.startsWith("$") && piece.endsWith("$") && piece.length > 2) {
-            parts.push({ type: "inline", content: piece.slice(1, -1) });
-          } else {
-            parts.push({ type: "text", content: piece });
-          }
-        }
-      }
-
-      return parts
-        .map((part) => {
-          if (part.type === "display") {
-            return katex.renderToString(part.content, {
-              displayMode: true,
-              throwOnError: false,
-              trust: false,
-            });
-          }
-          if (part.type === "inline") {
-            return katex.renderToString(part.content, {
-              displayMode: false,
-              throwOnError: false,
-              trust: false,
-            });
-          }
-
-          return part.content
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/\n/g, "<br/>");
-        })
-        .join("");
-    } catch {
-      return null;
-    }
-  }, [text]);
-
-  if (rendered !== null) {
-    return (
-      <span
-        className="leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: rendered }}
-      />
-    );
-  }
-
-  return <span className="whitespace-pre-wrap leading-relaxed">{text}</span>;
 }
 
 function CodeBlock({ code, language }: { code: string; language: string | null }) {
@@ -455,7 +392,7 @@ export default function SolutionsReview() {
 
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="text-base leading-relaxed text-gray-900">
-              <MathText text={currentSolution.stem_tex} />
+              <MathText text={currentSolution.stem_tex} block />
             </div>
 
             {currentSolution.code_snippet && (
@@ -509,6 +446,8 @@ export default function SolutionsReview() {
                   text={
                     currentSolution.solution_tex?.trim() || "Solution not available for this question."
                   }
+                  block
+                  solution
                 />
               </div>
             </div>

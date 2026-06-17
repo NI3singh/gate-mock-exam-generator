@@ -24,14 +24,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 // ── Static imports — always available on first render ─────────────────────────
-import katex from "katex";
-import "katex/dist/katex.min.css";
 import Prism from "prismjs";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-c";
 
 import api, { getApiErrorMessage } from "../services/api";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import MathText from "../components/common/MathText";
 import type {
   QuestionItem,
   QuestionStatus,
@@ -109,92 +108,6 @@ const STATUS_LEGEND: { status: QuestionStatus; label: string; bg: string }[] = [
   { status: "answered_marked", label: "Answered & Marked", bg: "bg-blue-500"   },
   { status: "not_visited",     label: "Not Visited",       bg: "bg-gray-200 border border-gray-400"   },
 ];
-
-// ── Math renderer ─────────────────────────────────────────────────────────────
-
-function MathText({ text }: { text: string }) {
-  const rendered = useMemo(() => {
-    try {
-      // Split on $$...$$ (display) then $...$ (inline)
-      const parts: Array<{ type: "text" | "display" | "inline"; content: string }> = [];
-
-      // Step 1: split on display math $$...$$
-      const displaySplit = text.split(/(\$\$[\s\S]*?\$\$)/g);
-      const stage1: Array<{ type: "text" | "display"; content: string }> = [];
-      for (const chunk of displaySplit) {
-        if (chunk.startsWith("$$") && chunk.endsWith("$$") && chunk.length > 4) {
-          stage1.push({ type: "display", content: chunk.slice(2, -2) });
-        } else {
-          stage1.push({ type: "text", content: chunk });
-        }
-      }
-
-      // Step 2: split text chunks on inline math $...$
-      for (const s1 of stage1) {
-        if (s1.type === "display") {
-          parts.push(s1);
-        } else {
-          const inlineSplit = s1.content.split(/(\$[^$\n]+?\$)/g);
-          for (const chunk of inlineSplit) {
-            if (chunk.startsWith("$") && chunk.endsWith("$") && chunk.length > 2) {
-              parts.push({ type: "inline", content: chunk.slice(1, -1) });
-            } else {
-              parts.push({ type: "text", content: chunk });
-            }
-          }
-        }
-      }
-
-      // Step 3: render
-      const htmlParts: string[] = parts.map((p) => {
-        if (p.type === "display") {
-          try {
-            return katex.renderToString(p.content, {
-              displayMode: true,
-              throwOnError: false,
-              trust: false,
-            });
-          } catch {
-            return `<span class="text-red-500">[Math Error]</span>`;
-          }
-        } else if (p.type === "inline") {
-          try {
-            return katex.renderToString(p.content, {
-              displayMode: false,
-              throwOnError: false,
-              trust: false,
-            });
-          } catch {
-            return `<span class="text-red-500">[Math Error]</span>`;
-          }
-        } else {
-          // Preserve newlines as <br>
-          return p.content
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/\n/g, "<br/>");
-        }
-      });
-
-      return htmlParts.join("");
-    } catch {
-      return null;
-    }
-  }, [text]);
-
-  if (rendered !== null) {
-    return (
-      <span
-        className="math-text leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: rendered }}
-      />
-    );
-  }
-
-  // Fallback: plain text
-  return <span className="leading-relaxed whitespace-pre-wrap">{text}</span>;
-}
 
 // ── Code block ─────────────────────────────────────────────────────────────────
 
@@ -1120,7 +1033,7 @@ export default function ExamScreen() {
           <div className="flex-1 overflow-y-auto px-6 py-5">
             {/* Stem */}
             <div className="text-base text-gray-900 leading-relaxed">
-              <MathText text={currentQuestion.stem_tex} />
+              <MathText text={currentQuestion.stem_tex} block />
             </div>
 
             {/* Code snippet */}
