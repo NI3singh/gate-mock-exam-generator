@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
-import re
+import logging
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -13,12 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.schemas.attempt import AttemptDetailResponse
 from app.services.attempt_detail_service import build_attempt_detail
+from app.services.tex_render import render_mixed_latex
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
 GENERATED_PDFS_DIR = BACKEND_ROOT / "generated_pdfs"
 
 LATEX_TIMEOUT = httpx.Timeout(120.0, connect=20.0, read=120.0, write=20.0)
+
+logger = logging.getLogger(__name__)
 
 _JINJA = Environment(
     loader=FileSystemLoader(str(TEMPLATES_DIR)),
@@ -46,29 +50,6 @@ def _latex_text(value: Any) -> str:
 
 
 _JINJA.filters["latex_text"] = _latex_text
-
-
-def _render_mixed_latex(text: str | None) -> str:
-    if not text:
-        return ""
-
-    parts: list[str] = []
-    display_chunks = re.split(r"(\$\$[\s\S]*?\$\$)", text)
-
-    for chunk in display_chunks:
-        if chunk.startswith("$$") and chunk.endswith("$$") and len(chunk) > 4:
-            parts.append(chunk)
-            continue
-
-        inline_chunks = re.split(r"(\$[^$\n]+?\$)", chunk)
-        for piece in inline_chunks:
-            if piece.startswith("$") and piece.endswith("$") and len(piece) > 2:
-                parts.append(piece)
-            else:
-                escaped = _latex_text(piece)
-                parts.append(escaped.replace("\r\n", "\n").replace("\n", "\\\\\n"))
-
-    return "".join(parts)
 
 
 def _choice_label(index: int) -> str:
@@ -143,7 +124,7 @@ def _build_template_context(detail: AttemptDetailResponse) -> dict[str, Any]:
             choices.append(
                 {
                     "label": _choice_label(index),
-                    "content_tex": _render_mixed_latex(choice),
+                    "content_tex": render_mixed_latex(choice),
                     "is_correct": index in correct_indices,
                 }
             )
@@ -155,12 +136,14 @@ def _build_template_context(detail: AttemptDetailResponse) -> dict[str, Any]:
                 "marks": solution["marks"],
                 "section_name": solution["section_name"],
                 "topic": solution["topic"],
-                "stem_tex": _render_mixed_latex(solution.get("stem_tex")),
+                "stem_tex": render_mixed_latex(solution.get("stem_tex")),
                 "code_snippet": solution.get("code_snippet") or "",
                 "listings_language": _listings_language(solution.get("code_language")),
                 "choices": choices,
                 "correct_answer_tex": _format_correct_answer_tex(solution),
-                "solution_tex": _render_mixed_latex(solution.get("solution_tex")),
+                "solution_tex": render_mixed_latex(
+                    solution.get("solution_tex"), solution_layout=True
+                ),
             }
         )
 
@@ -241,8 +224,13 @@ async def _compile_latex_to_pdf(tex_content: str) -> bytes:
         ],
         "options": {
             "compiler": {
-                "halt_on_error": True,
-                "silent": False,
+                # Keep going past any non-fatal LaTeX error instead of aborting
+                # the whole document. With halt_on_error the engine stopped at the
+                # first recoverable error in any single question and returned a
+                # PDF truncated at that point; non-stop mode renders every
+                # question (the renderer already neutralises fatal constructs).
+                "halt_on_error": False,
+                "silent": True,
             },
             "response": {
                 "log_files_on_failure": True,
@@ -250,27 +238,71 @@ async def _compile_latex_to_pdf(tex_content: str) -> bytes:
         },
     }
 
-    async with httpx.AsyncClient(timeout=LATEX_TIMEOUT) as client:
-        response = await client.post(settings.LATEX_BUILD_URL, json=payload)
+    # Retry only transient failures (network/timeout/5xx). A 4xx is a
+    # deterministic compilation/client error and is raised immediately.
+    last_error = "unknown error"
+    attempts = settings.LATEX_MAX_RETRIES + 1
+    for attempt in range(1, attempts + 1):
+        try:
+            async with httpx.AsyncClient(timeout=LATEX_TIMEOUT) as client:
+                response = await client.post(settings.LATEX_BUILD_URL, json=payload)
+        except httpx.RequestError as exc:
+            last_error = f"could not reach LaTeX service ({exc.__class__.__name__}): {exc}"
+            if attempt < attempts:
+                wait = 2 ** attempt
+                logger.warning(
+                    "LaTeX compile attempt %s/%s failed (%s); retrying in %ss",
+                    attempt, attempts, last_error, wait,
+                )
+                await asyncio.sleep(wait)
+                continue
+            break
 
-    if response.status_code >= 400:
+        if response.status_code >= 500:
+            last_error = (
+                f"LaTeX service returned status {response.status_code}: "
+                f"{_extract_compile_error(response)}"
+            )
+            if attempt < attempts:
+                wait = 2 ** attempt
+                logger.warning(
+                    "LaTeX compile attempt %s/%s got HTTP %s; retrying in %ss",
+                    attempt, attempts, response.status_code, wait,
+                )
+                await asyncio.sleep(wait)
+                continue
+            break
+
+        if response.status_code >= 400:
+            # Deterministic compilation/client error — retrying won't help.
+            raise RuntimeError(
+                f"LaTeX.online request failed with status {response.status_code}: "
+                f"{_extract_compile_error(response)}"
+            )
+
+        if response.content.startswith(b"%PDF"):
+            return response.content
+
+        # 2xx without a PDF body is a deterministic content problem.
         raise RuntimeError(
-            f"LaTeX.online request failed with status {response.status_code}: "
+            "LaTeX compilation did not return a PDF: "
             f"{_extract_compile_error(response)}"
         )
 
-    if response.content.startswith(b"%PDF"):
-        return response.content
-
     raise RuntimeError(
-        "LaTeX compilation did not return a PDF: "
-        f"{_extract_compile_error(response)}"
+        f"LaTeX compilation failed after {attempts} attempt(s): {last_error}"
     )
+
+
+# Bump this whenever the LaTeX renderer or template changes, so previously
+# cached PDFs (e.g. the old truncated output) are regenerated on next download
+# instead of being served from disk.
+_SOLUTION_PDF_VERSION = "v3"
 
 
 def _pdf_path_for_attempt(attempt_id: str) -> Path:
     GENERATED_PDFS_DIR.mkdir(parents=True, exist_ok=True)
-    return GENERATED_PDFS_DIR / f"solutions_{attempt_id}.pdf"
+    return GENERATED_PDFS_DIR / f"solutions_{attempt_id}_{_SOLUTION_PDF_VERSION}.pdf"
 
 
 async def generate_solutions_pdf(

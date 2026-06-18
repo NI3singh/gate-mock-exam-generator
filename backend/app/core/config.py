@@ -63,6 +63,8 @@ class Settings:
         "LATEX_BUILD_URL", "https://latex.ytotech.com/builds/sync"
     )
     LATEX_COMPILER: str = os.getenv("LATEX_COMPILER", "xelatex")
+    # Retry transient LaTeX-service failures (network/timeout/5xx); never 4xx.
+    LATEX_MAX_RETRIES: int = int(os.getenv("LATEX_MAX_RETRIES", "2"))
 
     # App
     APP_ENV: str = os.getenv("APP_ENV", "development")

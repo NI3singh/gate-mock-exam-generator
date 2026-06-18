@@ -32,6 +32,10 @@
 
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{0.6em}
+% Allow generous spacing flexibility so long math/words never overflow the
+% margin (which is what made the engine drop content in the old output).
+\sloppy
+\emergencystretch=3em
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\textcolor{gategray}{GATE Mock Test Solution Key}}
@@ -60,7 +64,7 @@ Unanswered & {{ total_unanswered }} & Exam ID & {{ exam_id | latex_text }} \\
 \vspace{1em}
 
 {% for solution in solutions %}
-\section*{Question {{ solution.qno }}}
+\section*{\textcolor{gateblue}{Question {{ solution.qno }}}}
 \textbf{Type:} {{ solution.question_type | latex_text }} \hfill \textbf{Marks:} {{ solution.marks }}\\
 \textbf{Section:} {{ solution.section_name | latex_text }} \hfill \textbf{Topic:} {{ solution.topic | latex_text }}
 
@@ -80,7 +84,7 @@ Unanswered & {{ total_unanswered }} & Exam ID & {{ exam_id | latex_text }} \\
 \end{enumerate}
 {% endif %}
 
-\textbf{Correct Answer:} {{ solution.correct_answer_tex }}
+\textbf{\textcolor{gategreen}{Correct Answer:}} {{ solution.correct_answer_tex }}
 
 \textbf{Step-by-step Solution:}
 
