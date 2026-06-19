@@ -45,6 +45,7 @@ from app.services.question_validator import (
 )
 from app.services.tex_sanitize import sanitize_question_fields
 from app.services.exam_assembler import assemble_exam, compute_marks_summary
+from app.services.question_verifier import verify_questions
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,9 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
             valid, batch_deficit = validate_batch_aligned(
                 raw, batch_spec, expected_section=batch_spec["section_name"]
             )
+
+            valid, verify_deficit = await _apply_verification(valid, batch_spec)
+            batch_deficit.extend(verify_deficit)
 
             for q in valid:
                 q["_paper"] = exam.paper if batch_spec["is_ga"] is False else "GA"
@@ -279,7 +283,8 @@ def _build_batch_plan(
         "count": GA_1MARK,
         "types": {"MCQ": GA_1MARK},
         "question_slots": ["MCQ"] * GA_1MARK,
-        "difficulty": difficulty if difficulty != "auto" else "easy",
+        # GATE GA is not trivial: floor the 1-mark auto difficulty at medium (was easy).
+        "difficulty": difficulty if difficulty != "auto" else "medium",
     })
     batches.append({
         "section_name": "General Aptitude",
@@ -290,7 +295,8 @@ def _build_batch_plan(
         "count": GA_2MARK,
         "types": {"MCQ": GA_2MARK},
         "question_slots": ["MCQ"] * GA_2MARK,
-        "difficulty": difficulty if difficulty != "auto" else "medium",
+        # 2-mark GA needs genuine multi-step reasoning: floor auto difficulty at hard (was medium).
+        "difficulty": difficulty if difficulty != "auto" else "hard",
     })
 
     # ── Subject batches ──
@@ -449,6 +455,33 @@ async def _generate_one_batch(batch_spec: dict) -> list[dict]:
     return questions
 
 
+async def _apply_verification(
+    valid: list[dict],
+    batch_spec: dict,
+) -> tuple[list[dict], list[dict]]:
+    """Optional LLM verification gate over structurally-valid questions.
+
+    Disabled by default (settings.LLM_VERIFY_ENABLED). When enabled, rejected
+    questions are returned as deficit slots so the retry loop regenerates them.
+    The off-path is a pure no-op: no LLM calls and no behaviour change.
+    """
+    if not settings.LLM_VERIFY_ENABLED or not valid:
+        return valid, []
+
+    kept, rejected = await verify_questions(valid, batch_spec["difficulty"])
+    extra_deficit = [
+        slot_spec_from_batch(batch_spec, q.get("question_type"))
+        for q in rejected
+    ]
+    if rejected:
+        logger.info(
+            "Verification gate rejected %s/%s question(s) in this batch",
+            len(rejected),
+            len(valid),
+        )
+    return kept, extra_deficit
+
+
 async def _update_generation_progress(
     db: AsyncSession,
     exam: Exam,
@@ -583,6 +616,9 @@ async def _retry_deficit_slots(
                     retry_spec,
                     expected_section=retry_spec["section_name"],
                 )
+
+                valid, verify_deficit = await _apply_verification(valid, retry_spec)
+                still_failed.extend(verify_deficit)
 
                 for q in valid:
                     q["_paper"] = (

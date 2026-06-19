@@ -227,3 +227,40 @@ def extract_json_array(text: str) -> list[dict]:
         raise ValueError(f"Expected JSON array, got {type(parsed).__name__}")
 
     return parsed
+
+
+def extract_json_object(text: str) -> dict:
+    """
+    Extract a single JSON object from LLM response text.
+
+    Mirrors extract_json_array: strips code fences, isolates the outermost
+    { ... }, repairs unescaped LaTeX backslashes, then parses.
+    """
+    cleaned = text.strip()
+
+    fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", cleaned, re.DOTALL)
+    if fence_match:
+        cleaned = fence_match.group(1).strip()
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        cleaned = cleaned[start: end + 1]
+
+    fixed = _fix_json_latex_escapes(cleaned)
+
+    try:
+        parsed = json.loads(fixed)
+    except json.JSONDecodeError as exc:
+        logger.error(
+            "JSON object parse error after escape-fix: %s\n"
+            "--- Original (first 600 chars) ---\n%s",
+            exc,
+            text[:600],
+        )
+        raise ValueError(f"Failed to parse LLM response as JSON object: {exc}")
+
+    if not isinstance(parsed, dict):
+        raise ValueError(f"Expected JSON object, got {type(parsed).__name__}")
+
+    return parsed

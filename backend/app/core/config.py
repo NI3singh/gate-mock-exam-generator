@@ -47,6 +47,16 @@ class Settings:
     LLM_RETRIES: int = int(os.getenv("LLM_RETRIES", "2"))
     LLM_TIMEOUT_SECONDS: int = int(os.getenv("LLM_TIMEOUT_SECONDS", "120"))
 
+    # LLM verification gate: independently re-solve each generated question and
+    # (optionally) judge its difficulty, rejecting wrong or too-easy questions.
+    # OFF by default — enabling adds one LLM call per generated question.
+    LLM_VERIFY_ENABLED: bool = os.getenv("LLM_VERIFY_ENABLED", "false").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+    LLM_VERIFY_CHECK_DIFFICULTY: bool = os.getenv(
+        "LLM_VERIFY_CHECK_DIFFICULTY", "true"
+    ).strip().lower() in ("1", "true", "yes", "on")
+
     # Deficit retry: after the main batch pass, regenerate failed/missing slots.
     GENERATION_DEFICIT_MAX_ROUNDS: int = int(
         os.getenv("GENERATION_DEFICIT_MAX_ROUNDS", "3")
