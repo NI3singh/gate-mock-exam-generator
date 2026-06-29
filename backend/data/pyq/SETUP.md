@@ -14,8 +14,9 @@ You already know how to run the app *without* PYQ. This guide calls out the
 ```bash
 # from backend/ , with your virtualenv active
 pip install -r requirements.txt          # 🆕 now includes sentence-transformers + pymupdf
-alembic upgrade head                      # creates all tables incl. pyq + pgvector indexes
 # ... fill in .env (see section 3) ...
+# DB: point DATABASE_URL at your existing Neon DB (already has schema + data) -> nothing
+#     else to do.  (A brand-new EMPTY database instead? run:  alembic upgrade head)
 
 # 🆕 PYQ pipeline
 #   1. put PDFs in data/pyq/pdfs/  named CS_2024_questions.pdf / CS_2024_answerkey.pdf ...
@@ -44,15 +45,20 @@ to "lose" grounding is to skip the data steps, never to break the app.
 
 ## 2. Prerequisites (delta from the base app)
 
-The base app needs: Python 3.11+, Node (for the frontend), and **PostgreSQL with the
-`pgvector` extension available**. PYQ adds nothing new to that list, but two points
-matter a lot:
+The base app needs: Python 3.11+, Node (for the frontend), and a Postgres database.
+For PYQ, three things matter:
 
-- 🆕 **pgvector must be installed in Postgres.** Migration `002` runs
-  `CREATE EXTENSION IF NOT EXISTS vector`, but the extension files must exist on the
-  server. Easiest on any OS: run Postgres from the official pgvector image
-  `docker run -d --name gate-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 pgvector/pgvector:pg16`.
-  (Native installs also work if you add pgvector to your Postgres.)
+- 🆕 **Database — use Neon (recommended).** The database now lives on **Neon** (cloud)
+  and already has pgvector, the full schema, and your data (migrated from the old local
+  Postgres via `scripts/migrate_to_neon.py`). On a new machine you do **not** need a
+  local Postgres install, `createdb`, migrations, or a data re-load — just set
+  `DATABASE_URL` to your Neon URL (section 3) and run.
+  - App (asyncpg) form: `postgresql+asyncpg://<user>:<pass>@<ep-...>.neon.tech/neondb?ssl=require`
+    — note **`?ssl=require`** (NOT `sslmode=`), and use the **direct** endpoint
+    (hostname has no `-pooler`).
+  - _Alternative — local Postgres:_ you must have the **pgvector** extension available
+    (easiest: `docker run -d --name gate-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 pgvector/pgvector:pg16`),
+    then create the DB and run `alembic upgrade head` (section 3, Option B).
 - 🆕 **First embedding run downloads a model (~90 MB).** The first time embeddings
   are computed, `sentence-transformers` downloads `all-MiniLM-L6-v2`. Needs internet
   once; it's then cached. (Offline machine? See Troubleshooting.)
@@ -78,8 +84,9 @@ pip install -r requirements.txt  # 🆕 pulls sentence-transformers + pymupdf to
 Create `backend/.env` (same vars as before, **plus** the 🆕 PYQ ones):
 
 ```dotenv
-# --- existing (same as your current setup) ---
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/gate_mock_test
+# --- database: Neon (recommended) — copy from the Neon dashboard; asyncpg form + ?ssl=require ---
+DATABASE_URL=postgresql+asyncpg://<user>:<pass>@<ep-xxxx>.<region>.aws.neon.tech/neondb?ssl=require
+# (local alternative) DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/gate_mock_test
 FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
 LLM_PROVIDER=nebius
 NEBIUS_API_KEY=...
@@ -97,17 +104,21 @@ VISION_MODEL=                     # set to a vision model id for the extractor
 # LLM_VERIFY_CHECK_DIFFICULTY=true
 ```
 
-Create the database and run migrations (creates ALL tables, including
-`pyq_questions`, `source_documents`, and the pgvector HNSW indexes):
+**Database — pick one:**
 
-```bash
-# create the DB once (example)
-#   docker exec -it gate-pg createdb -U postgres gate_mock_test
-alembic upgrade head
-```
+- **Option A — Neon (recommended):** nothing to do. Your Neon DB already has every
+  table, index, pgvector, and all data (it was migrated). Just confirm `DATABASE_URL`
+  points to it (above) and **skip `createdb` / `alembic`**.
+- **Option B — a fresh/empty DB** (new local Postgres, or a brand-new empty Neon DB):
+  create it, then build the schema:
+  ```bash
+  # local example:  docker exec -it gate-pg createdb -U postgres gate_mock_test
+  alembic upgrade head    # creates ALL tables incl. pyq_questions + pgvector HNSW indexes
+  ```
 
-> Syllabus data **auto-loads** on first server start (no action needed). PYQ data
-> does **not** auto-load — you load it explicitly in section 4.
+> Syllabus data **auto-loads** on first server start *if its table is empty* (so a fresh
+> Option-B DB self-populates syllabus; your existing Neon DB already has it). PYQ data
+> **never** auto-loads — you load it explicitly in section 4.
 
 ---
 
@@ -183,7 +194,8 @@ If `embeddings available: False`, retrieval won't work — install
 `sentence-transformers` (it's in requirements) and re-run this command.
 
 It's **idempotent per (paper, year)** — safe to re-run after adding more papers or
-editing JSON; it replaces that paper-year's rows.
+editing JSON; it replaces that paper-year's rows. (With Neon, this loads into the
+cloud DB, so every machine pointing at Neon immediately sees the PYQs.)
 
 ---
 
@@ -225,15 +237,19 @@ Per-exam, grounding also respects the exam's `use_pyq_reference` flag (set from
 
 ## 7. Troubleshooting
 
+- **App can't connect to Neon / SSL error** → make sure `DATABASE_URL` is the
+  **asyncpg** form with **`?ssl=require`** (not `sslmode=`), pointing at the **direct**
+  endpoint (no `-pooler` in the host). Re-verify the data with
+  `python scripts/migrate_to_neon.py --verify-only`.
 - **No `PYQ grounding is ON` in logs** → `PYQ_GROUNDING_ENABLED` is false, or the
   exam was created before you enabled it. Set it true, restart, make a NEW exam.
 - **`Attached 0 exemplars` / no exemplar lines** → no PYQs loaded, or embeddings
   missing. Run `python scripts/load_pyq.py` and confirm `embeddings available: True`.
 - **`embeddings available: False`** → `pip install sentence-transformers`, then
   re-run the loader (rows loaded without embeddings won't be retrievable).
-- **`CREATE EXTENSION vector` fails during migration** → pgvector isn't installed
-  in Postgres. Use the `pgvector/pgvector:pg16` Docker image, or add pgvector to
-  your Postgres install, then `alembic upgrade head` again.
+- **`CREATE EXTENSION vector` fails (local DB only)** → pgvector isn't installed in
+  that Postgres. Use the `pgvector/pgvector:pg16` Docker image (or add pgvector to your
+  install), then `alembic upgrade head` again. (Neon already has pgvector.)
 - **Extractor: `No vision model set`** → set `VISION_MODEL` in `.env` or pass
   `--vision-model`.
 - **Extractor produces messy JSON** → tune with `--max-pages` on one paper; fix the
