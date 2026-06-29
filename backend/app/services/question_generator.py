@@ -46,6 +46,7 @@ from app.services.question_validator import (
 from app.services.tex_sanitize import sanitize_question_fields
 from app.services.exam_assembler import assemble_exam, compute_marks_summary
 from app.services.question_verifier import verify_questions
+from app.services.pyq_retrieval import retrieve_exemplars, format_exemplars
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,10 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
     total_expected = sum(b["count"] for b in batches)
     logger.info(f"Batch plan: {len(batches)} batches, {total_expected} questions expected")
 
+    grounding_on = settings.PYQ_GROUNDING_ENABLED and bool(exam.use_pyq_reference)
+    if grounding_on:
+        logger.info("PYQ grounding is ON for this generation")
+
     # ── 4. Generate questions batch by batch ──
     all_questions: list[dict] = []
     deficit_slots: list[dict] = []
@@ -134,6 +139,7 @@ async def _do_generation(db: AsyncSession, exam_id: uuid.UUID) -> None:
 
     for batch_idx, batch_spec in enumerate(batches):
         try:
+            await _attach_exemplars(db, batch_spec, enabled=grounding_on)
             raw = await _generate_one_batch(batch_spec)
             valid, batch_deficit = validate_batch_aligned(
                 raw, batch_spec, expected_section=batch_spec["section_name"]
@@ -435,6 +441,11 @@ async def _generate_one_batch(batch_spec: dict) -> list[dict]:
 
     system_prompt = prompt_template["system_prompt"]
 
+    # Prepend retrieved previous-year exemplars (if grounding attached any).
+    exemplars = batch_spec.get("exemplars")
+    if exemplars:
+        user_prompt = format_exemplars(exemplars) + "\n\n" + user_prompt
+
     # Call LLM
     raw_response = await call_llm(
         system_prompt=system_prompt,
@@ -480,6 +491,39 @@ async def _apply_verification(
             len(valid),
         )
     return kept, extra_deficit
+
+
+async def _attach_exemplars(
+    db: AsyncSession,
+    batch_spec: dict,
+    *,
+    enabled: bool,
+) -> None:
+    """Retrieve PYQ exemplars for a batch and attach them to the spec.
+
+    No-op (and never raises) when grounding is disabled or retrieval is empty,
+    so generation falls back to its previous ungrounded behaviour.
+    """
+    if not enabled:
+        return
+    try:
+        rows = await retrieve_exemplars(
+            db,
+            paper=batch_spec["paper"],
+            section_name=batch_spec["section_name"],
+            topics=batch_spec.get("topics", []),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not attach PYQ exemplars (continuing): %s", exc)
+        return
+    if rows:
+        batch_spec["exemplars"] = rows
+        logger.info(
+            "Attached %s PYQ exemplar(s) to batch (%s / %s)",
+            len(rows),
+            batch_spec["paper"],
+            batch_spec["section_name"],
+        )
 
 
 async def _update_generation_progress(
@@ -575,6 +619,7 @@ async def _retry_deficit_slots(
     Mutates *all_questions* in place when retries succeed.
     """
     remaining = list(deficit_slots)
+    grounding_on = settings.PYQ_GROUNDING_ENABLED and bool(exam.use_pyq_reference)
     max_rounds = settings.GENERATION_DEFICIT_MAX_ROUNDS
     batch_size = max(1, settings.GENERATION_DEFICIT_BATCH_SIZE)
     round_delay = max(0, settings.GENERATION_DEFICIT_ROUND_DELAY_SECONDS)
@@ -610,6 +655,7 @@ async def _retry_deficit_slots(
             batch_label = f"retry {retry_round}/{max_rounds} · group {group_idx + 1}/{len(groups)}"
 
             try:
+                await _attach_exemplars(db, retry_spec, enabled=grounding_on)
                 raw = await _generate_one_batch(retry_spec)
                 valid, still_failed = validate_batch_aligned(
                     raw,

@@ -9,6 +9,7 @@ from fastapi import Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
@@ -103,7 +104,7 @@ async def generate_exam(
         scope=body.scope,
         selected_topics=body.selected_topics if body.scope == "topic" else None,
         difficulty=body.difficulty,
-        use_pyq_reference=False,
+        use_pyq_reference=settings.PYQ_GROUNDING_ENABLED,
         types_ratio={
             "MCQ": body.types_ratio.MCQ,
             "MSQ": body.types_ratio.MSQ,

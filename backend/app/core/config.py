@@ -57,6 +57,20 @@ class Settings:
         "LLM_VERIFY_CHECK_DIFFICULTY", "true"
     ).strip().lower() in ("1", "true", "yes", "on")
 
+    # PYQ grounding: retrieve real previous-year questions and inject them as
+    # exemplars at generation time. Safe no-op if no PYQs are loaded or the
+    # embedding model is unavailable.
+    PYQ_GROUNDING_ENABLED: bool = os.getenv(
+        "PYQ_GROUNDING_ENABLED", "true"
+    ).strip().lower() in ("1", "true", "yes", "on")
+    PYQ_RETRIEVAL_TOP_K: int = int(os.getenv("PYQ_RETRIEVAL_TOP_K", "3"))
+    EMBEDDING_MODEL: str = os.getenv(
+        "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
+    )
+    # Vision model (OpenAI-compatible, e.g. a Nebius VL model) used by the PYQ PDF
+    # extractor. Reuses the Nebius key/base-url unless overridden on the CLI.
+    VISION_MODEL: str = os.getenv("VISION_MODEL", "")
+
     # Deficit retry: after the main batch pass, regenerate failed/missing slots.
     GENERATION_DEFICIT_MAX_ROUNDS: int = int(
         os.getenv("GENERATION_DEFICIT_MAX_ROUNDS", "3")

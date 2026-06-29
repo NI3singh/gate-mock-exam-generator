@@ -1,0 +1,4 @@
+# Raw official PDFs and figure crops are large/binary — keep them local only.
+pdfs/
+figures/
+*.pdf

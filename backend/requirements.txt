@@ -21,3 +21,7 @@ openai
 anthropic
 
 pgvector
+
+# PYQ grounding: local text embeddings (384-dim, no API cost) + PDF parsing
+sentence-transformers
+pymupdf
